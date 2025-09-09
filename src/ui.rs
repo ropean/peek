@@ -1,0 +1,231 @@
+use eframe::egui;
+use std::sync::Arc;
+use std::sync::mpsc;
+use std::thread;
+
+use crate::http_client::{HttpClient, HttpResponse, RequestConfig};
+
+pub struct PeekApp {
+    http_client: Arc<std::sync::Mutex<HttpClient>>,
+    url_input: String,
+    use_ssl: bool,
+    use_post: bool,
+    allow_redirects: bool,
+    response_text: String,
+    is_loading: bool,
+    response_receiver: Option<mpsc::Receiver<Result<HttpResponse, String>>>,
+    last_url_input: String, // Track previous URL input to detect changes
+}
+
+impl PeekApp {
+    pub fn new(http_client: Arc<std::sync::Mutex<HttpClient>>) -> Self {
+        Self {
+            http_client,
+            url_input: "aceapp.dev".to_string(),
+            use_ssl: true,
+            use_post: false,
+            allow_redirects: false,
+            response_text: String::new(),
+            is_loading: false,
+            response_receiver: None,
+            last_url_input: "aceapp.dev".to_string(),
+        }
+    }
+
+    fn make_request(&mut self) {
+        if self.is_loading {
+            return;
+        }
+
+        self.is_loading = true;
+        self.response_text = "Requesting...".to_string();
+
+        let config = RequestConfig {
+            url: self.url_input.clone(),
+            use_ssl: self.use_ssl,
+            use_post: self.use_post,
+            allow_redirects: self.allow_redirects,
+        };
+        
+
+        let http_client = self.http_client.clone();
+        let (tx, rx) = mpsc::channel();
+        self.response_receiver = Some(rx);
+        
+        // Spawn a new thread with its own tokio runtime
+        thread::spawn(move || {
+            let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
+            let result = rt.block_on(async {
+                let client = http_client.lock().unwrap();
+                client.make_request(config).await
+            });
+            
+            let response = match result {
+                Ok(response) => Ok(response),
+                Err(e) => Err(format!("Error: {}", e)),
+            };
+            
+            let _ = tx.send(response);
+        });
+    }
+
+    fn process_url_input(&mut self) {
+        // Only process if URL has changed
+        if self.url_input == self.last_url_input {
+            return;
+        }
+        
+        let trimmed_url = self.url_input.trim();
+        
+        // Check if URL includes protocol and update SSL checkbox accordingly
+        if trimmed_url.starts_with("https://") {
+            self.use_ssl = true;
+            self.url_input = trimmed_url.replace("https://", "");
+        } else if trimmed_url.starts_with("http://") {
+            self.use_ssl = false;
+            self.url_input = trimmed_url.replace("http://", "");
+        } else {
+            // No protocol specified, just trim but keep SSL checkbox unchanged
+            self.url_input = trimmed_url.to_string();
+        }
+        
+        // Update the last URL input to track changes
+        self.last_url_input = self.url_input.clone();
+    }
+
+    fn format_response(&self, response: &HttpResponse) -> String {
+        let mut output = String::new();
+        
+        output.push_str(&format!("Your requested address is: {}\n", response.requested_url));
+        if response.requested_url != response.final_url {
+            output.push_str(&format!("Final URL (after redirects): {}\n", response.final_url));
+        }
+        output.push('\n');
+        
+        // Client IPs
+        if !response.client_ips.is_empty() {
+            output.push_str("Your IP(s):");
+            if response.client_ips.len() > 1 {
+                output.push('\n');
+                for ip in &response.client_ips {
+                    output.push_str(&format!("{}\n", ip));
+                }
+            } else {
+                output.push_str(&format!(" {}\n", response.client_ips[0]));
+            }
+            output.push('\n');
+        }
+        
+        // Server IPs
+        if !response.server_ips.is_empty() {
+            output.push_str("Responded IP(s):");
+            if response.server_ips.len() > 1 {
+                output.push('\n');
+                for ip in &response.server_ips {
+                    output.push_str(&format!("{}\n", ip));
+                }
+            } else {
+                output.push_str(&format!(" {}\n", response.server_ips[0]));
+            }
+            output.push('\n');
+        }
+        
+        // Status code
+        output.push_str(&format!("Responded status code: {}\n\n", response.status_code));
+        
+        // Headers
+        if !response.headers.is_empty() {
+            output.push_str("Responded headers:\n");
+            for (key, value) in &response.headers {
+                output.push_str(&format!("{}: {}\n", key, value));
+            }
+            output.push('\n');
+        }
+        
+        // Response body (only show if not empty)
+        if !response.body.trim().is_empty() {
+            output.push_str("Responded source code:\n");
+            output.push_str(&response.body);
+        }
+        
+        output
+    }
+}
+
+impl eframe::App for PeekApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Check for response from background thread
+        if let Some(receiver) = &self.response_receiver {
+            if let Ok(result) = receiver.try_recv() {
+                match result {
+                    Ok(response) => {
+                        self.response_text = self.format_response(&response);
+                    }
+                    Err(e) => {
+                        self.response_text = e;
+                    }
+                }
+                self.is_loading = false;
+                self.response_receiver = None;
+            }
+        }
+        
+        // Request a repaint to keep checking for responses
+        if self.is_loading {
+            ctx.request_repaint();
+        }
+        
+        egui::CentralPanel::default().show(ctx, |ui| {
+            // Top panel with controls
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 10.0;
+                
+                // URL input
+                let url_response = ui.add(
+                    egui::TextEdit::singleline(&mut self.url_input)
+                        .desired_width(500.0)
+                        .font(egui::TextStyle::Heading)
+                );
+                
+                // Process URL input changes only when text changes
+                if url_response.changed() {
+                    self.process_url_input();
+                }
+                
+                // Handle Enter key
+                if url_response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                    self.make_request();
+                }
+                
+                // SSL checkbox
+                ui.checkbox(&mut self.use_ssl, "SSL");
+                
+                // POST checkbox
+                ui.checkbox(&mut self.use_post, "Post");
+                
+                // Redirect checkbox
+                ui.checkbox(&mut self.allow_redirects, "Redirect");
+                
+                // Request button
+                let button_text = if self.is_loading { "Loading..." } else { "Request" };
+                if ui.add_enabled(!self.is_loading, egui::Button::new(button_text)).clicked() {
+                    self.make_request();
+                }
+            });
+            
+            ui.add_space(10.0);
+            
+            // Response area
+            egui::ScrollArea::vertical()
+                .max_height(ui.available_height() - 20.0)
+                .show(ui, |ui| {
+                    ui.add(
+                        egui::TextEdit::multiline(&mut self.response_text)
+                            .desired_width(f32::INFINITY)
+                            .desired_rows(30)
+                            .font(egui::TextStyle::Monospace)
+                    );
+                });
+        });
+    }
+}
