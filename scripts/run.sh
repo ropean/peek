@@ -1,3 +1,3 @@
 #!/bin/bash
-echo "Running Peek HTTP Status Checker..."
+echo "Running peek ..."
 cargo run --release

@@ -21,7 +21,7 @@ fn main() -> Result<(), eframe::Error> {
     let http_client = Arc::new(std::sync::Mutex::new(HttpClient::new()));
 
     eframe::run_native(
-        "Peek - HTTP Status Checker",
+        "peek",
         options,
         Box::new(|cc| {
             // This gives us image support:

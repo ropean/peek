@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Building Peek HTTP Status Checker..."
+echo "Building peek ..."
 cargo build --release
 if [ $? -eq 0 ]; then
     echo "Build successful!"

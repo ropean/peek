@@ -175,8 +175,9 @@ impl eframe::App for PeekApp {
             ctx.request_repaint();
         }
         
-        egui::CentralPanel::default().show(ctx, |ui| {
-            // Top panel with controls
+        // Top panel for controls (fixed height)
+        egui::TopBottomPanel::top("top_panel").exact_height(40.0).show(ctx, |ui| {
+            ui.add_space(5.0);
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 10.0;
                 
@@ -212,18 +213,31 @@ impl eframe::App for PeekApp {
                     self.make_request();
                 }
             });
-            
-            ui.add_space(10.0);
-            
-            // Response area
+            ui.add_space(5.0);
+        });
+
+        // Bottom panel for copyright (fixed height)
+        egui::TopBottomPanel::bottom("bottom_panel").exact_height(20.0).show(ctx, |ui| {
+            ui.with_layout(egui::Layout::centered_and_justified(egui::Direction::LeftToRight), |ui| {
+                ui.label(egui::RichText::new("All rights reserved © Ropean 2025")
+                    .size(11.0)
+                    .color(egui::Color32::GRAY));
+            });
+        });
+
+        // Central panel for response (fills all remaining space)
+        egui::CentralPanel::default().show(ctx, |ui| {
+            // Use ScrollArea to contain the TextEdit with fixed size
+            let size = ui.available_size();
             egui::ScrollArea::vertical()
-                .max_height(ui.available_height() - 20.0)
+                .max_height(size.y)
+                .auto_shrink([false, false])
                 .show(ui, |ui| {
                     ui.add(
                         egui::TextEdit::multiline(&mut self.response_text)
-                            .desired_width(f32::INFINITY)
-                            .desired_rows(30)
                             .font(egui::TextStyle::Monospace)
+                            .desired_width(size.x)
+                            .desired_rows(0) // Allow unlimited rows
                     );
                 });
         });

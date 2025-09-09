@@ -1,4 +1,4 @@
-# Peek - HTTP Status Checker
+# peek
 
 A Rust port of the HttpStatus application, providing a modern GUI for HTTP request testing and analysis.
 

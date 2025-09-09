@@ -1,5 +1,5 @@
 @echo off
-echo Building Peek HTTP Status Checker...
+echo Building peek ...
 cd /d "%~dp0.."
 cargo build --release
 if %ERRORLEVEL% EQU 0 (
