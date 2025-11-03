@@ -225,8 +225,8 @@ impl eframe::App for PeekApp {
         }
         
         // Top panel for controls (fixed height)
-        egui::TopBottomPanel::top("top_panel").exact_height(40.0).show(ctx, |ui| {
-            ui.add_space(5.0);
+        egui::TopBottomPanel::top("top_panel").exact_height(60.0).show(ctx, |ui| {
+            ui.add_space(10.0);
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 10.0;
                 
@@ -265,11 +265,11 @@ impl eframe::App for PeekApp {
                     self.make_request();
                 }
             });
-            ui.add_space(5.0);
+            ui.add_space(10.0);
         });
 
         // Bottom panel for copyright (fixed height)
-        egui::TopBottomPanel::bottom("bottom_panel").exact_height(20.0).show(ctx, |ui| {
+        egui::TopBottomPanel::bottom("bottom_panel").exact_height(30.0).show(ctx, |ui| {
             ui.with_layout(egui::Layout::centered_and_justified(egui::Direction::LeftToRight), |ui| {
                 ui.label(egui::RichText::new("All rights reserved © Ropean 2025")
                     .size(11.0)
@@ -279,16 +279,15 @@ impl eframe::App for PeekApp {
 
         // Central panel for response (fills all remaining space)
         egui::CentralPanel::default().show(ctx, |ui| {
-            let available_size = ui.available_size();
             egui::ScrollArea::vertical()
-                .max_height(available_size.y)
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
+                    let available_width = ui.available_width();
                     ui.add(
                         egui::TextEdit::multiline(&mut self.response_text)
                             .font(egui::TextStyle::Monospace)
-                            .desired_width(available_size.x)
-                            .desired_rows(0)
+                            .desired_width(available_width)
+                            .desired_rows(20)
                     );
                 });
         });
