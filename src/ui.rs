@@ -16,7 +16,6 @@ pub struct PeekApp {
     is_loading: bool,
     response_receiver: Option<mpsc::Receiver<Result<Vec<HttpResponse>, String>>>,
     last_url_input: String, // Track previous URL input to detect changes
-    first_frame: bool, // Track if this is the first frame to center window
 }
 
 impl PeekApp {
@@ -32,7 +31,6 @@ impl PeekApp {
             is_loading: false,
             response_receiver: None,
             last_url_input: "aceapp.dev".to_string(),
-            first_frame: true,
         }
     }
 
@@ -204,13 +202,7 @@ impl PeekApp {
 }
 
 impl eframe::App for PeekApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        // Center window on first frame
-        if self.first_frame {
-            frame.set_centered();
-            self.first_frame = false;
-        }
-
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Check for response from background thread
         if let Some(receiver) = &self.response_receiver {
             if let Ok(result) = receiver.try_recv() {
