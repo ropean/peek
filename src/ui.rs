@@ -279,15 +279,14 @@ impl eframe::App for PeekApp {
 
         // Central panel for response (fills all remaining space)
         egui::CentralPanel::default().show(ctx, |ui| {
-            // Make the scroll area fill the entire available space
+            let available_size = ui.available_size();
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    let available_width = ui.available_width();
-                    ui.add_sized(
-                        egui::vec2(available_width, ui.available_height()),
+                    ui.add(
                         egui::TextEdit::multiline(&mut self.response_text)
                             .font(egui::TextStyle::Monospace)
+                            .desired_width(available_size.x)
                     );
                 });
         });
