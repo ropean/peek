@@ -15,7 +15,7 @@ fn main() -> Result<(), eframe::Error> {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([960.0, 600.0])
             .with_min_inner_size([960.0, 600.0])
-            .with_position(egui::Pos2::new(f32::INFINITY, f32::INFINITY)), // Center on screen
+            .with_center(),
         ..Default::default()
     };
 
