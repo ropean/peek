@@ -281,12 +281,14 @@ impl eframe::App for PeekApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             let available_size = ui.available_size();
             egui::ScrollArea::vertical()
+                .max_height(available_size.y)
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
                     ui.add(
                         egui::TextEdit::multiline(&mut self.response_text)
                             .font(egui::TextStyle::Monospace)
                             .desired_width(available_size.x)
+                            .desired_rows(0)
                     );
                 });
         });
