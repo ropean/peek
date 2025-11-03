@@ -16,6 +16,7 @@ pub struct PeekApp {
     is_loading: bool,
     response_receiver: Option<mpsc::Receiver<Result<Vec<HttpResponse>, String>>>,
     last_url_input: String, // Track previous URL input to detect changes
+    first_frame: bool, // Track if this is the first frame for centering
 }
 
 impl PeekApp {
@@ -31,6 +32,7 @@ impl PeekApp {
             is_loading: false,
             response_receiver: None,
             last_url_input: "aceapp.dev".to_string(),
+            first_frame: true,
         }
     }
 
@@ -203,6 +205,12 @@ impl PeekApp {
 
 impl eframe::App for PeekApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Center window on first frame
+        if self.first_frame {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CenterOnScreen);
+            self.first_frame = false;
+        }
+
         // Check for response from background thread
         if let Some(receiver) = &self.response_receiver {
             if let Ok(result) = receiver.try_recv() {
@@ -279,15 +287,21 @@ impl eframe::App for PeekApp {
 
         // Central panel for response (fills all remaining space)
         egui::CentralPanel::default().show(ctx, |ui| {
+            let available_height = ui.available_height();
+            let available_width = ui.available_width();
+
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    let available_width = ui.available_width();
+                    // Calculate rows based on available height (approximate)
+                    let line_height = 16.0; // Approximate height per line in monospace
+                    let rows = (available_height / line_height).max(10.0) as usize;
+
                     ui.add(
                         egui::TextEdit::multiline(&mut self.response_text)
                             .font(egui::TextStyle::Monospace)
                             .desired_width(available_width)
-                            .desired_rows(20)
+                            .desired_rows(rows)
                     );
                 });
         });
