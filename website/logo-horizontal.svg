@@ -40,8 +40,8 @@
     <circle cx="58" cy="57.5" r="2" fill="#7c3aed"/>
   </g>
   
-  <!-- Text: "peek" -->
-  <g transform="translate(110, 50)">
+  <!-- Text: "peek" - Aligned with icon center -->
+  <g transform="translate(110, 20)">
     <!-- p -->
     <path d="M0,0 L0,30 M0,0 Q10,-2 15,5 Q17,10 15,15 Q10,22 0,20" 
           stroke="#0f172a" stroke-width="6" stroke-linecap="round" 
