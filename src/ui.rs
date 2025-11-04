@@ -292,21 +292,17 @@ impl eframe::App for PeekApp {
 
         // Central panel for response (fills all remaining space)
         egui::CentralPanel::default().show(ctx, |ui| {
-            let available_height = ui.available_height();
-            let available_width = ui.available_width();
-
             egui::ScrollArea::vertical()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    // Calculate rows based on available height (approximate)
-                    let line_height = 16.0; // Approximate height per line in monospace
-                    let rows = (available_height / line_height).max(10.0) as usize;
+                    // Allocate the full available size to the TextEdit so it
+                    // stretches to the bottom and removes the gap to the footer.
+                    let size = ui.available_size();
 
-                    ui.add(
+                    ui.add_sized(
+                        size,
                         egui::TextEdit::multiline(&mut self.response_text)
-                            .font(egui::TextStyle::Monospace)
-                            .desired_width(available_width)
-                            .desired_rows(rows)
+                            .font(egui::TextStyle::Monospace),
                     );
                 });
         });
