@@ -44,8 +44,8 @@ jobs:
           - os: macos-latest
             target: x86_64-apple-darwin
             name: peek-macos-x64
-            upx: true
-            strip: false
+            upx: false # Disable UPX for macOS x64 due to compatibility issues
+            strip: true
           - os: macos-latest
             target: aarch64-apple-darwin
             name: peek-macos-arm64
@@ -63,16 +63,17 @@ jobs:
             name: peek-linux-x86
             upx: true
             strip: false
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            name: peek-linux-arm64
-            upx: true
-            strip: false
-          - os: ubuntu-latest
-            target: armv7-unknown-linux-gnueabihf
-            name: peek-linux-armv7
-            upx: true
-            strip: false
+          # ARM platforms require more complex cross-compilation setup
+          # - os: ubuntu-latest
+          #   target: aarch64-unknown-linux-gnu
+          #   name: peek-linux-arm64
+          #   upx: true
+          #   strip: false
+          # - os: ubuntu-latest
+          #   target: armv7-unknown-linux-gnueabihf
+          #   name: peek-linux-armv7
+          #   upx: true
+          #   strip: false
 
     steps:
       - name: Checkout code
@@ -169,50 +170,71 @@ jobs:
           cp target/${{ matrix.platform.target }}/release/peek ${{ matrix.platform.name }}
           chmod +x ${{ matrix.platform.name }}
 
-      - name: Calculate checksums (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          $hash = Get-FileHash -Algorithm SHA256 ${{ matrix.platform.name }}
-          "$($hash.Hash.ToLower())  ${{ matrix.platform.name }}" | Out-File -FilePath ${{ matrix.platform.name }}.sha256 -Encoding ASCII
-
-      - name: Calculate checksums (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          shasum -a 256 ${{ matrix.platform.name }} > ${{ matrix.platform.name }}.sha256
-
-      - name: Display file info (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          $size = (Get-Item ${{ matrix.platform.name }}).Length / 1MB
-          Write-Host "File: ${{ matrix.platform.name }}"
-          Write-Host "Size: $([math]::Round($size, 2)) MB"
-          Get-Content ${{ matrix.platform.name }}.sha256
-
-      - name: Display file info (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          ls -lh ${{ matrix.platform.name }}
-          cat ${{ matrix.platform.name }}.sha256
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.name }}
-          path: |
-            ${{ matrix.platform.name }}
-            ${{ matrix.platform.name }}.sha256
+          path: ${{ matrix.platform.name }}
           retention-days: 7
 
-      - name: Upload to release
+  # Create release with changelog
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract changelog for current version
+        id: changelog
+        run: |
+          VERSION="${{ env.RELEASE_TAG }}"
+          VERSION_NUM="${VERSION#v}"
+
+          # Extract the changelog section for this version
+          if grep -q "\[${VERSION_NUM}\]" CHANGELOG.md; then
+            # Extract content between this version and the next version header
+            CHANGELOG=$(sed -n "/## \[${VERSION_NUM}\]/,/## \[/p" CHANGELOG.md | sed '$d' | tail -n +2)
+          else
+            # Fallback: generate from git commits since last tag
+            LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            if [ -n "$LAST_TAG" ]; then
+              CHANGELOG="## What's Changed"$'\n\n'
+              git log ${LAST_TAG}..HEAD --pretty=format:"- %s" --reverse >> temp_changelog.txt
+              CHANGELOG="${CHANGELOG}$(cat temp_changelog.txt)"
+            else
+              CHANGELOG="Initial release"
+            fi
+          fi
+
+          # Save to file for the release
+          echo "$CHANGELOG" > release_notes.md
+          echo "Changelog extracted successfully"
+          cat release_notes.md
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          find artifacts -type f -name "peek-*" -exec cp {} release-files/ \;
+          ls -lh release-files/
+
+      - name: Create or update release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: Release ${{ env.RELEASE_TAG }}
+          body_path: release_notes.md
           draft: false
           prerelease: false
-          files: |
-            ${{ matrix.platform.name }}
-            ${{ matrix.platform.name }}.sha256
+          files: release-files/*
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -220,7 +242,7 @@ jobs:
   # Create a summary of all builds
   summary:
     name: Build Summary
-    needs: build
+    needs: [build, release]
     runs-on: ubuntu-latest
     if: always()
     outputs:
@@ -238,20 +260,27 @@ jobs:
 
       - name: Display summary
         run: |
-          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 Release ${{ env.RELEASE_TAG }} Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Platform | Size | SHA256 |" >> $GITHUB_STEP_SUMMARY
-          echo "|----------|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Built Platforms" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|------|" >> $GITHUB_STEP_SUMMARY
 
           for dir in artifacts/*/; do
             if [ -d "$dir" ]; then
               for file in "$dir"*; do
-                if [[ ! "$file" == *.sha256 ]]; then
+                if [[ -f "$file" && ! "$file" == *.txt ]]; then
                   filename=$(basename "$file")
                   size=$(ls -lh "$file" | awk '{print $5}')
-                  sha256=$(cat "${file}.sha256" 2>/dev/null | awk '{print substr($1,1,16)"..."}' || echo "N/A")
-                  echo "| $filename | $size | \`$sha256\` |" >> $GITHUB_STEP_SUMMARY
+                  echo "| $filename | $size |" >> $GITHUB_STEP_SUMMARY
                 fi
               done
             fi
           done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [View Release](https://github.com/${{ github.repository }}/releases/tag/${{ env.RELEASE_TAG }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Download Assets](https://github.com/${{ github.repository }}/releases/download/${{ env.RELEASE_TAG }}/)" >> $GITHUB_STEP_SUMMARY
