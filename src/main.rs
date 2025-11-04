@@ -10,6 +10,22 @@ mod cli;
 use http_client::HttpClient;
 use ui::PeekApp;
 
+fn load_icon_from_ico(ico_bytes: &[u8]) -> egui::IconData {
+    use image::GenericImageView;
+    
+    let image = image::load_from_memory(ico_bytes)
+        .expect("Failed to load icon");
+    
+    let (width, height) = image.dimensions();
+    let rgba = image.to_rgba8().into_raw();
+    
+    egui::IconData {
+        rgba,
+        width,
+        height,
+    }
+}
+
 fn main() {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
@@ -21,10 +37,16 @@ fn main() {
     }
 
     // No CLI subcommand given -> start GUI (default behavior).
+    
+    // Load the icon from .ico file
+    let icon_bytes = include_bytes!("app.ico");
+    let icon = load_icon_from_ico(icon_bytes);
+    
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([960.0, 600.0])
-            .with_min_inner_size([960.0, 600.0]),
+            .with_min_inner_size([960.0, 600.0])
+            .with_icon(icon),
         ..Default::default()
     };
 
