@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-A HTTP inspector. It's Rust port of the HttpStatus application, providing a modern GUI for HTTP request testing and analysis.
+A HTTP inspector. It's Rust port of the [HttpStatus](https://github.com/ropean/HttpStatus) application, providing a modern GUI for HTTP request testing and analysis.
 
 ## Features
 
