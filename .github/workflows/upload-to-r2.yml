@@ -77,12 +77,18 @@ jobs:
           echo "Downloaded files:"
           ls -lh downloads/
 
-      - name: Configure AWS CLI for R2
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          aws-region: auto
+      - name: Install AWS CLI
+        run: |
+          # AWS CLI is pre-installed on GitHub runners, just verify
+          aws --version
+
+      - name: Configure AWS credentials for R2
+        run: |
+          # Configure AWS CLI with R2 credentials
+          aws configure set aws_access_key_id ${{ secrets.R2_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          aws configure set default.region auto
+          echo "AWS CLI configured for R2"
 
       - name: Upload files to Cloudflare R2
         env:
