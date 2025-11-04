@@ -39,7 +39,7 @@ fn main() {
     // No CLI subcommand given -> start GUI (default behavior).
     
     // Load the icon from .ico file
-    let icon_bytes = include_bytes!("app.ico");
+    let icon_bytes = include_bytes!("../assets/pk.ico");
     let icon = load_icon_from_ico(icon_bytes);
     
     let options = eframe::NativeOptions {
