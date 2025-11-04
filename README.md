@@ -1,6 +1,8 @@
 # peek
 
-A Rust port of the HttpStatus application, providing a modern GUI for HTTP request testing and analysis.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+A HTTP inspector. It's Rust port of the HttpStatus application, providing a modern GUI for HTTP request testing and analysis.
 
 ## Features
 
@@ -44,12 +46,69 @@ A Rust port of the HttpStatus application, providing a modern GUI for HTTP reque
    - **Redirect**: Check to allow automatic redirects
 3. **Make Request**: Click the "Request" button or press Enter
 4. **View Results**: The response will be displayed in the lower text area, including:
+
    - Requested URL
    - Client IP addresses
    - Server IP addresses
    - HTTP status code
    - Response headers
    - Response body/content
+
+   ## Command-line interface (CLI)
+
+   In addition to the GUI, `peek` provides a CLI for headless usage. The CLI reuses the same HTTP logic as the GUI and aims to be a drop-in tool for scripting and automation.
+
+   Basic usage:
+
+   Start GUI (default):
+
+   ```fish
+   peek
+   ```
+
+   Single request with defaults (SSL enabled by default):
+
+   ```fish
+   peek cli example.com
+   ```
+
+   Force HTTP (no SSL) and request JSON output:
+
+   ```fish
+   peek cli --no-ssl -f json example.com
+   ```
+
+   POST with body:
+
+   ```fish
+   peek cli -X POST -d '{"key":"value"}' example.com
+   ```
+
+   Batch mode: read URLs from a file (one per line) and run with concurrency 10:
+
+   ```fish
+   peek batch -c 10 -f json urls.txt
+   ```
+
+   Flags summary (selected):
+
+   JSON output example (array):
+
+   ```json
+   [
+     {
+       "requested_url": "example.com",
+       "response": {
+         /* HttpResponse object */
+       }
+     },
+     { "requested_url": "bad.example", "error": "timeout" }
+   ]
+   ```
+
+   Notes about concurrency:
+
+   If you'd like, I can add a few short end-to-end examples that run against a local test server (useful for CI).
 
 ## Architecture
 
@@ -81,4 +140,4 @@ This Rust implementation maintains the same core functionality as the original C
 
 ## License
 
-This project follows the same licensing as the original HttpStatus application.
+This project is licensed under the MIT License — see the `LICENSE` file for details.
