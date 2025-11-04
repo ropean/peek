@@ -49,8 +49,8 @@ winapi = { version = "0.3", features = ["winuser", "windef"] }
 winres = "0.1"
 
 [profile.release]
-opt-level = "z"   # 优化文件大小
-lto = true        # 链接时优化
-codegen-units = 1 # 更好的优化
-strip = true      # 删除符号信息
-panic = "abort"   # 减小 panic 处理代码
+opt-level = "z"   # Optimize for size
+lto = true        # Link-time optimization
+codegen-units = 1 # Better optimization
+strip = true      # Remove debug symbols
+panic = "abort"   # Reduce panic handling code

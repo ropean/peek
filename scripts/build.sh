@@ -14,7 +14,7 @@ if [ $? -eq 0 ]; then
 	# Show file size before compression
 	if [ -f "$EXEC_PATH" ]; then
 		SIZE_BYTES=$(stat -f%z "$EXEC_PATH" 2>/dev/null || stat -c%s "$EXEC_PATH" 2>/dev/null)
-		SIZE_MB=$(echo "scale=2; $SIZE_BYTES / 1048576" | bc)
+		SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $SIZE_BYTES / 1048576}")
 		echo "File size before compression: ${SIZE_MB} MB"
 	fi
 
@@ -43,6 +43,17 @@ if [ $? -eq 0 ]; then
 		echo "  - macOS/Linux: brew install upx  or  apt install upx"
 		echo "  - Windows: scoop install upx  or  choco install upx"
 		echo ""
+	fi
+
+	# Show final file size
+	if [ -f "$EXEC_PATH" ]; then
+		SIZE_BYTES=$(stat -f%z "$EXEC_PATH" 2>/dev/null || stat -c%s "$EXEC_PATH" 2>/dev/null)
+		SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $SIZE_BYTES / 1048576}")
+		echo ""
+		echo "==================================="
+		echo "Final executable size: ${SIZE_MB} MB"
+		echo "==================================="
+		echo "Executable available at: $EXEC_PATH"
 	fi
 else
 	echo "Build failed!"
