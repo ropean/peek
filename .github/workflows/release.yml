@@ -121,9 +121,6 @@ jobs:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ matrix.platform.target }}-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Build
-        run: cargo build --release --target ${{ matrix.platform.target }}
-
       - name: Install UPX (Windows)
         if: runner.os == 'Windows' && matrix.platform.upx
         run: choco install upx -y
@@ -138,26 +135,40 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y upx
 
-      - name: Compress with UPX (Windows)
-        if: runner.os == 'Windows' && matrix.platform.upx
+      - name: Build with build.sh
+        shell: bash
         run: |
-          upx --best --lzma target/${{ matrix.platform.target }}/release/peek.exe
-        continue-on-error: true
-
-      - name: Compress with UPX (Unix)
-        if: runner.os != 'Windows' && matrix.platform.upx
-        run: |
-          upx --best --lzma target/${{ matrix.platform.target }}/release/peek
-        continue-on-error: true
-
-      - name: Strip binary (Alternative compression for ARM64 macOS)
-        if: matrix.platform.strip
-        run: |
-          echo "Original size:"
-          ls -lh target/${{ matrix.platform.target }}/release/peek
-          strip target/${{ matrix.platform.target }}/release/peek
-          echo "After stripping:"
-          ls -lh target/${{ matrix.platform.target }}/release/peek
+          # For cross-compilation, we need to set the target
+          if [ "${{ matrix.platform.target }}" != "$(rustc -vV | sed -n 's|host: ||p')" ]; then
+            # Cross-compilation: build directly with cargo
+            cargo build --release --target ${{ matrix.platform.target }}
+            
+            # Determine executable path
+            if [ "${{ runner.os }}" = "Windows" ]; then
+              EXEC_PATH="target/${{ matrix.platform.target }}/release/peek.exe"
+            else
+              EXEC_PATH="target/${{ matrix.platform.target }}/release/peek"
+            fi
+            
+            # Apply UPX compression if enabled
+            if [ "${{ matrix.platform.upx }}" = "true" ] && command -v upx &>/dev/null; then
+              echo "Compressing with UPX..."
+              upx --best --lzma "$EXEC_PATH" || echo "UPX compression failed, continuing..."
+            fi
+            
+            # Apply strip if enabled
+            if [ "${{ matrix.platform.strip }}" = "true" ]; then
+              echo "Original size:"
+              ls -lh "$EXEC_PATH"
+              strip "$EXEC_PATH"
+              echo "After stripping:"
+              ls -lh "$EXEC_PATH"
+            fi
+          else
+            # Native build: use build.sh
+            chmod +x scripts/build.sh
+            ./scripts/build.sh
+          fi
 
       - name: Rename binary (Windows)
         if: runner.os == 'Windows'

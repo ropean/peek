@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2025-11-04
+
+### Added
+
+- **Simplified CLI Usage**: Direct URL parameters without requiring `cli` subcommand
+  - `peek aceapp.dev` now works directly (no need for `peek cli aceapp.dev`)
+  - All CLI options (`--ssl`, `-X`, `-d`, `-r`, `-a`, etc.) work with direct URL syntax
+  - `cli` subcommand remains available for backward compatibility
+- **Windows GUI Experience**: Completely eliminated console window flash on startup
+  - Added `#![windows_subsystem = "windows"]` attribute for GUI builds
+  - Implemented dynamic console allocation when CLI arguments are detected
+  - Console is attached to parent process when run from terminal
+  - New console is allocated if no parent console exists
+- **Enhanced Windows API Integration**
+  - Added `AllocConsole` support for creating new console when needed
+  - Added `consoleapi` feature to winapi dependency
+  - Improved console attachment logic for better terminal integration
+
+### Changed
+
+- Refactored CLI argument parsing to support both direct URL and subcommand syntax
+- Extracted common CLI request handling into `handle_cli_request()` helper function
+- Updated GitHub Actions workflow to use `build.sh` for consistent build process
+- Improved cross-platform console handling with platform-specific compilation
+
+### Fixed
+
+- Eliminated console window flash when double-clicking `.exe` file on Windows
+- Fixed console not appearing when using CLI mode on Windows
+- Resolved duplicate field definitions in CLI argument structure
+
 ## [1.1.2] - 2025-11-04
 
 ### Fixed

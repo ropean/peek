@@ -1,3 +1,6 @@
+// Use Windows subsystem to avoid console window when double-clicking
+#![cfg_attr(windows, windows_subsystem = "windows")]
+
 use eframe::egui;
 use std::sync::Arc;
 use std::process;
@@ -13,8 +16,14 @@ use ui::PeekApp;
 #[cfg(windows)]
 fn attach_console() {
     use winapi::um::wincon::{AttachConsole, ATTACH_PARENT_PROCESS};
+    use winapi::um::consoleapi::AllocConsole;
+    
     unsafe {
-        AttachConsole(ATTACH_PARENT_PROCESS);
+        // Try to attach to parent console first (if run from cmd/terminal)
+        if AttachConsole(ATTACH_PARENT_PROCESS) == 0 {
+            // If no parent console, allocate a new one
+            AllocConsole();
+        }
     }
 }
 
@@ -35,27 +44,29 @@ fn load_icon_from_ico(ico_bytes: &[u8]) -> egui::IconData {
 }
 
 fn main() {
+    // Check if we have CLI arguments
+    let args: Vec<String> = std::env::args().collect();
+    let has_cli_args = args.len() > 1;
+    
     // On Windows with windows_subsystem = "windows", we need to manually attach
     // to console if running with CLI arguments
     #[cfg(windows)]
-    {
-        let args: Vec<String> = std::env::args().collect();
-        // If there are CLI arguments (beyond just the program name), attach console
-        if args.len() > 1 {
-            attach_console();
-        }
+    if has_cli_args {
+        attach_console();
     }
     
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
-    // First try parsing CLI args. If a CLI subcommand was given, handle it and exit.
-    let code = cli::run_from_args();
-    if code != 127 {
-        // Either succeeded or failed with an exit code.
-        process::exit(code);
+    // Try parsing CLI args. If a CLI command was given, handle it and exit.
+    if has_cli_args {
+        let code = cli::run_from_args();
+        if code != 127 {
+            // Either succeeded or failed with an exit code.
+            process::exit(code);
+        }
     }
 
-    // No CLI subcommand given -> start GUI (default behavior).
+    // No CLI arguments or command given -> start GUI (default behavior).
     
     // Load the icon from .ico file
     let icon_bytes = include_bytes!("../assets/pk.ico");

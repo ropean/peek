@@ -10,13 +10,65 @@ use crate::http_client::{HttpClient, HttpResponse, RequestConfig};
 #[derive(Parser, Debug)]
 #[command(name = "peek", about = "Peek - GUI + CLI HTTP inspector")]
 pub struct CliArgs {
+    /// One or more URLs to request (if no subcommand is given)
+    #[arg(value_name = "URL")]
+    pub urls: Vec<String>,
+    
+    /// Force SSL (https)
+    #[arg(long = "ssl")]
+    pub ssl: bool,
+
+    /// Disable SSL (use http)
+    #[arg(long = "no-ssl")]
+    pub no_ssl: bool,
+
+    /// HTTP method (GET or POST)
+    #[arg(short = 'X', long = "method", default_value = "GET")]
+    pub method: String,
+
+    /// Request body (implies POST)
+    #[arg(short = 'd', long = "data")]
+    pub data: Option<String>,
+
+    /// Follow redirects
+    #[arg(short = 'r', long = "follow-redirects")]
+    pub follow_redirects: bool,
+
+    /// Also query www.<domain> if top-level
+    #[arg(short = 'a', long = "all")]
+    pub all: bool,
+
+    /// Timeout in seconds
+    #[arg(short = 't', long = "timeout")]
+    pub timeout: Option<u64>,
+
+    /// Output file (writes text or JSON)
+    #[arg(short = 'o', long = "output")]
+    pub output: Option<PathBuf>,
+
+    /// Fail and return non-zero exit code if any request fails
+    #[arg(long = "fail-on-error")]
+    pub fail_on_error: bool,
+
+    /// Format: text or json
+    #[arg(short = 'f', long = "format", default_value = "text")]
+    pub format: String,
+
+    /// Quiet
+    #[arg(short = 'q', long = "quiet")]
+    pub quiet: bool,
+
+    /// Verbose
+    #[arg(long = "verbose")]
+    pub verbose: bool,
+
     #[command(subcommand)]
     pub command: Option<Commands>,
 }
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Single or multiple URL requests
+    /// Single or multiple URL requests (explicit subcommand - optional)
     Cli {
         /// One or more URLs to request
         #[arg(value_name = "URL")]
@@ -50,17 +102,17 @@ pub enum Commands {
         #[arg(short = 't', long = "timeout")]
         timeout: Option<u64>,
 
-    /// Output file (writes text or JSON
-    #[arg(short = 'o', long = "output")]
-    output: Option<PathBuf>,
+        /// Output file (writes text or JSON)
+        #[arg(short = 'o', long = "output")]
+        output: Option<PathBuf>,
 
-    /// Fail and return non-zero exit code if any request fails
-    #[arg(long = "fail-on-error")]
-    fail_on_error: bool,
+        /// Fail and return non-zero exit code if any request fails
+        #[arg(long = "fail-on-error")]
+        fail_on_error: bool,
 
-    /// Format: text or json
-    #[arg(short = 'f', long = "format", default_value = "text")]
-    format: String,
+        /// Format: text or json
+        #[arg(short = 'f', long = "format", default_value = "text")]
+        format: String,
 
         /// Quiet
         #[arg(short = 'q', long = "quiet")]
@@ -170,6 +222,122 @@ fn format_response_text(response: &HttpResponse) -> String {
     output
 }
 
+// Helper function to handle CLI requests (used by both direct args and cli subcommand)
+fn handle_cli_request(
+    urls: Vec<String>,
+    ssl: bool,
+    no_ssl: bool,
+    method: String,
+    data: Option<String>,
+    follow_redirects: bool,
+    all: bool,
+    timeout: Option<u64>,
+    output: Option<PathBuf>,
+    format: String,
+    quiet: bool,
+    _verbose: bool,
+    fail_on_error: bool,
+) -> i32 {
+    let force_ssl = if ssl { Some(true) } else if no_ssl { Some(false) } else { None };
+
+    if urls.is_empty() {
+        eprintln!("No URL provided");
+        return 2;
+    }
+
+    let client = HttpClient::new();
+    let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
+
+    // Build list of request configs (respect --all expansion)
+    let mut request_configs: Vec<RequestConfig> = Vec::new();
+    for raw in urls {
+        // possibly expand www if requested and top-level domain
+        let (cleaned, use_ssl) = normalize_url_and_ssl(&raw, force_ssl);
+
+        // If `all` and looks like top-level domain, query www.<domain> as well
+        let mut targets = vec![(cleaned.clone(), use_ssl)];
+        if all {
+            let parts: Vec<&str> = cleaned.split('.').collect();
+            if parts.len() == 2 {
+                targets.push((format!("www.{}", cleaned), use_ssl));
+            }
+        }
+
+        for (url, use_ssl) in targets {
+            request_configs.push(RequestConfig {
+                url: url.clone(),
+                use_ssl,
+                use_post: method.to_uppercase() == "POST" || data.is_some(),
+                allow_redirects: follow_redirects,
+                body: data.clone(),
+                timeout_secs: timeout,
+            });
+        }
+    }
+    // Run batch with concurrency
+    let client_arc: Arc<dyn crate::http_client::Requester> = Arc::new(client);
+    let results = rt.block_on(async move {
+        run_batch(client_arc, request_configs, 1).await
+    });
+
+    // Map results into output objects containing requested_url and either response or error
+    let mut output_objs: Vec<serde_json::Value> = Vec::new();
+    let mut any_error = false;
+    for (req, res) in &results {
+        match res {
+            Ok(resp) => {
+                output_objs.push(serde_json::json!({"requested_url": req.url, "response": resp.clone()}));
+            }
+            Err(e) => {
+                any_error = true;
+                output_objs.push(serde_json::json!({"requested_url": req.url, "error": e.clone()}));
+            }
+        }
+    }
+
+    if format.to_lowercase() == "json" {
+        match serde_json::to_string_pretty(&output_objs) {
+            Ok(s) => {
+                if let Some(path) = output {
+                    if let Ok(mut f) = File::create(path) {
+                        let _ = f.write_all(s.as_bytes());
+                    }
+                } else {
+                    println!("{}", s);
+                }
+            }
+            Err(e) => eprintln!("Failed to serialize JSON: {}", e),
+        }
+    } else {
+        // Text format
+        for (_req, res) in &results {
+            match res {
+                Ok(resp) => {
+                    let text = format_response_text(resp);
+                    if let Some(ref path) = output {
+                        if let Ok(mut f) = File::create(path) {
+                            let _ = f.write_all(text.as_bytes());
+                        }
+                    } else if !quiet {
+                        println!("{}", text);
+                    }
+                }
+                Err(e) => {
+                    if !quiet {
+                        eprintln!("Error: {}", e);
+                    }
+                }
+            }
+        }
+    }
+
+    if fail_on_error && any_error {
+        1
+    } else {
+        0
+    }
+}
+
 pub fn run_from_args() -> i32 {
     // Manual pre-parse handling for -v/--version so it's available globally
     // and won't collide with subcommand flags in clap's help output.
@@ -191,6 +359,25 @@ pub fn run_from_args() -> i32 {
 
     let args = CliArgs::parse();
 
+    // If URLs are provided directly (not via subcommand), process them
+    if !args.urls.is_empty() {
+        return handle_cli_request(
+            args.urls,
+            args.ssl,
+            args.no_ssl,
+            args.method,
+            args.data,
+            args.follow_redirects,
+            args.all,
+            args.timeout,
+            args.output,
+            args.format,
+            args.quiet,
+            args.verbose,
+            args.fail_on_error,
+        );
+    }
+
     match args.command {
         Some(Commands::Cli {
             urls,
@@ -203,108 +390,25 @@ pub fn run_from_args() -> i32 {
             timeout,
             output,
             format,
-            quiet: _,
-            verbose: _,
+            quiet,
+            verbose,
             fail_on_error,
         }) => {
-            let force_ssl = if ssl { Some(true) } else if no_ssl { Some(false) } else { None };
-
-            if urls.is_empty() {
-                eprintln!("No URL provided");
-                return 2;
-            }
-
-            let client = HttpClient::new();
-            let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
-
-            // Build list of request configs (respect --all expansion)
-            let mut request_configs: Vec<RequestConfig> = Vec::new();
-            for raw in urls {
-                // possibly expand www if requested and top-level domain
-                let (cleaned, use_ssl) = normalize_url_and_ssl(&raw, force_ssl);
-
-                // If `all` and looks like top-level domain, query www.<domain> as well
-                let mut targets = vec![(cleaned.clone(), use_ssl)];
-                if all {
-                    let parts: Vec<&str> = cleaned.split('.').collect();
-                    if parts.len() == 2 {
-                        targets.push((format!("www.{}", cleaned), use_ssl));
-                    }
-                }
-
-                for (url, use_ssl) in targets {
-                    request_configs.push(RequestConfig {
-                        url: url.clone(),
-                        use_ssl,
-                        use_post: method.to_uppercase() == "POST" || data.is_some(),
-                        allow_redirects: follow_redirects,
-                        body: data.clone(),
-                        timeout_secs: timeout,
-                    });
-                }
-            }
-            // Run batch with concurrency
-            let client_arc: Arc<dyn crate::http_client::Requester> = Arc::new(client);
-            let results = rt.block_on(async move {
-                run_batch(client_arc, request_configs, 1).await
-            });
-
-            // Map results into output objects containing requested_url and either response or error
-            let mut output_objs: Vec<serde_json::Value> = Vec::new();
-            let mut any_error = false;
-            for (req, res) in &results {
-                match res {
-                    Ok(resp) => {
-                        output_objs.push(serde_json::json!({"requested_url": req.url, "response": resp.clone()}));
-                    }
-                    Err(e) => {
-                        any_error = true;
-                        output_objs.push(serde_json::json!({"requested_url": req.url, "error": e.clone()}));
-                    }
-                }
-            }
-
-            if format.to_lowercase() == "json" {
-                match serde_json::to_string_pretty(&output_objs) {
-                    Ok(s) => {
-                        if let Some(path) = output {
-                            if let Ok(mut f) = File::create(path) {
-                                let _ = f.write_all(s.as_bytes());
-                            }
-                        } else {
-                            println!("{}", s);
-                        }
-                    }
-                    Err(e) => eprintln!("Failed to serialize JSON: {}", e),
-                }
-            } else {
-                // Text output: show successful responses only, print errors to stderr
-                let mut out = String::new();
-                let mut idx = 0usize;
-                for (req, res) in &results {
-                    match res {
-                        Ok(resp) => {
-                            if idx > 0 {
-                                out.push_str("\n\n");
-                            }
-                            out.push_str(&format!("========== Request {} =========={}\n\n", idx + 1, ""));
-                            out.push_str(&format_response_text(&resp));
-                            idx += 1;
-                        }
-                        Err(e) => eprintln!("Request error for {}: {}", req.url, e),
-                    }
-                }
-
-                if let Some(path) = output {
-                    if let Ok(mut f) = File::create(path) {
-                        let _ = f.write_all(out.as_bytes());
-                    }
-                } else if !out.is_empty() {
-                    println!("{}", out);
-                }
-            }
-
-            if fail_on_error && any_error { 1 } else { 0 }
+            handle_cli_request(
+                urls,
+                ssl,
+                no_ssl,
+                method,
+                data,
+                follow_redirects,
+                all,
+                timeout,
+                output,
+                format,
+                quiet,
+                verbose,
+                fail_on_error,
+            )
         }
         Some(Commands::Batch {
             file,
