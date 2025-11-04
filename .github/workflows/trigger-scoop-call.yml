@@ -82,7 +82,6 @@ jobs:
       license_url: 'https://github.com/ropean/peek/blob/main/LICENSE'
 
       shortcut_name: 'peek'
-      shortcut_description: 'HTTP inspector'
 
       notes: 'Peek is a powerful tool for inspecting and testing HTTP requests.'
 
