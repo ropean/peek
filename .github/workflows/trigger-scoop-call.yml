@@ -5,36 +5,51 @@ on:
     workflows: ['Build and Release']
     types:
       - completed
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to update (must start with v)'
+        required: true
+        type: string
 
 permissions:
   actions: read
   contents: read
 
 jobs:
-  # First, get the tag from the workflow run
+  # First, get the tag from the workflow run or manual input
   get-tag:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.get-tag.outputs.tag }}
     steps:
-      - name: Get tag from workflow run
+      - name: Get tag from workflow run or input
         id: get-tag
         run: |
-          if [[ "${{ github.event.workflow_run.head_branch }}" == refs/tags/* ]]; then
-            TAG="${{ github.event.workflow_run.head_branch }}"
-            TAG="${TAG#refs/tags/}"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+            # Validate that tag starts with 'v'
+            if [[ ! "$TAG" =~ ^v ]]; then
+              echo "Error: Tag must start with 'v'"
+              exit 1
+            fi
           else
-            # Try to get from ref name
-            TAG="${{ github.event.workflow_run.head_branch }}"
+            if [[ "${{ github.event.workflow_run.head_branch }}" == refs/tags/* ]]; then
+              TAG="${{ github.event.workflow_run.head_branch }}"
+              TAG="${TAG#refs/tags/}"
+            else
+              # Try to get from ref name
+              TAG="${{ github.event.workflow_run.head_branch }}"
+            fi
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Detected tag: $TAG"
 
   update-scoop:
     needs: get-tag
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    uses: ropean/scoop-ropean/.github/workflows/update-scoop-call.yml@main
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    uses: ropean/scoop/.github/workflows/update-scoop-call.yml@main
     with:
       tag: ${{ needs.get-tag.outputs.tag }}
 
