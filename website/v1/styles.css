@@ -165,15 +165,53 @@ body {
 }
 
 .site-footer {
-  padding: 26px 0;
+  padding: 48px 0 32px;
   color: var(--muted);
-  border-top: 1px solid rgba(255, 255, 255, 0.03);
-  margin-top: 36px;
+  background: linear-gradient(180deg, transparent, rgba(15, 23, 32, 0.6));
+  border-top: 1px solid rgba(79, 70, 229, 0.15);
+  margin-top: 48px;
+  position: relative;
+}
+.site-footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.5;
 }
 .footer-inner {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 20px;
+  font-size: 14px;
+}
+.footer-inner a {
+  color: #a8b3c1;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  position: relative;
+}
+.footer-inner a:hover {
+  color: var(--accent);
+}
+.footer-inner a::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform 0.2s ease;
+}
+.footer-inner a:hover::after {
+  transform: scaleX(1);
 }
 
 pre {
@@ -199,9 +237,13 @@ pre {
   }
   .footer-inner {
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
+    text-align: center;
   }
   .container {
     padding: 20px;
+  }
+  .site-footer {
+    padding: 32px 0 24px;
   }
 }

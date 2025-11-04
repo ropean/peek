@@ -3,105 +3,398 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#0f1720">
-    <title>peek — HTTP inspector</title>
-    <meta name="description" content="Peek — small GUI + CLI HTTP inspector. Run requests, view headers, status and response bodies." />
-    <!-- Inter font -->
-    <link rel="stylesheet" href="./styles.css">
+    <meta name="theme-color" content="#7c3aed">
+    <title>peek — Modern HTTP Inspector & Debugger</title>
+    <meta name="description" content="Peek — A beautiful, fast HTTP inspector. Test APIs, debug requests, analyze responses. Available as GUI and CLI." />
+    <link rel="stylesheet" href="./styles-v2.css">
   </head>
   <body>
+    <!-- Navigation -->
     <nav class="nav">
       <div class="nav-inner container">
         <div class="brand">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4" fill="#4f46e5"/><path d="M7 12h10M7 8h10M7 16h10" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="5" fill="url(#gradient1)"/>
+            <path d="M7 12h10M7 8h10M7 16h7" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="gradient1" x1="3" y1="3" x2="21" y2="21">
+                <stop offset="0%" stop-color="#7c3aed"/>
+                <stop offset="100%" stop-color="#14b8a6"/>
+              </linearGradient>
+            </defs>
+          </svg>
           <a href="/" class="brand-text">peek</a>
         </div>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#cli">CLI</a>
+          <a href="#download">Download</a>
+        </div>
         <div class="nav-actions">
-          <a class="btn btn-ghost" href="#features">Features</a>
-          <a class="btn" href="#download">Download</a>
+          <a class="btn btn-outline" href="https://github.com/ropean/peek" target="_blank">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+            </svg>
+            GitHub
+          </a>
+          <a class="btn btn-primary" href="#download">Download</a>
         </div>
       </div>
     </nav>
 
+    <!-- Hero Section -->
     <header class="hero">
-      <div class="container hero-inner">
-        <div class="hero-copy">
-          <h1>Inspect HTTP quickly — GUI + CLI</h1>
-          <p class="lead">Peek is a small, focused HTTP inspector for developers. Make requests, inspect headers, follow redirects, and view response bodies and IP information.</p>
+      <div class="container">
+        <div class="hero-badge">
+          <span class="badge">✨ Open Source</span>
+          <span class="badge">🚀 Fast & Lightweight</span>
+        </div>
+        
+        <h1 class="hero-title">
+          Debug HTTP Requests<br>
+          <span class="gradient-text">Like a Pro</span>
+        </h1>
+        
+        <p class="hero-description">
+          Peek is a modern HTTP inspector for developers who care about speed and simplicity. 
+          Test APIs, inspect headers, analyze responses, and debug network issues — all in a beautiful interface.
+        </p>
 
-          <div class="hero-ctas">
-            <a class="btn btn-primary" id="download" href="#">Download</a>
-            <a class="btn btn-outline" href="#cli">CLI & docs</a>
-          </div>
-
-          <ul class="hero-features">
-            <li>Cross-platform GUI</li>
-            <li>Scriptable CLI</li>
-            <li>DNS & IP insight</li>
-          </ul>
+        <div class="hero-ctas">
+          <a class="btn btn-primary btn-large" href="#download">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+            </svg>
+            Download for Free
+          </a>
+          <a class="btn btn-outline btn-large" href="#features">
+            Explore Features
+          </a>
         </div>
 
-        <div class="hero-visual" aria-hidden>
-          <div class="card">
-            <div class="card-header">Response preview</div>
-            <pre class="mock-response">GET https://aceapp.dev
-200 OK
-Content-Type: text/html; charset=utf-8
+        <div class="hero-stats">
+          <div class="stat">
+            <div class="stat-value">10ms</div>
+            <div class="stat-label">Average response</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">Cross-platform</div>
+            <div class="stat-label">macOS, Linux, Windows</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">MIT</div>
+            <div class="stat-label">Open source license</div>
+          </div>
+        </div>
 
-&lt;html&gt;...&lt;/html&gt;</pre>
+        <!-- Visual Demo -->
+        <div class="hero-demo">
+          <div class="demo-window">
+            <div class="window-header">
+              <div class="window-controls">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="window-title">peek — Response Inspector</div>
+            </div>
+            <div class="demo-content">
+              <div class="demo-request">
+                <div class="request-line">
+                  <span class="method">GET</span>
+                  <span class="url">https://api.github.com/users/ropean</span>
+                  <span class="status status-success">200 OK</span>
+                </div>
+                <div class="request-details">
+                  <div class="detail-row">
+                    <span class="label">Content-Type:</span>
+                    <span class="value">application/json</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="label">Server IP:</span>
+                    <span class="value">140.82.121.6</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="label">Response Time:</span>
+                    <span class="value">127ms</span>
+                  </div>
+                </div>
+              </div>
+              <div class="demo-response">
+<pre><code>{
+  "login": "ropean",
+  "name": "Ropean",
+  "public_repos": 42,
+  "followers": 1337
+}</code></pre>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </header>
 
-    <main class="container page">
-      <section id="features" class="grid">
-        <div class="feature">
-          <h3>Powerful requests</h3>
-          <p>GET, POST, toggle SSL, control redirects and view full headers and bodies.</p>
+    <!-- Features Section -->
+    <section id="features" class="features">
+      <div class="container">
+        <div class="section-header">
+          <h2>Everything you need to inspect HTTP</h2>
+          <p>Powerful features wrapped in a simple, intuitive interface</p>
         </div>
-        <div class="feature">
-          <h3>Network visibility</h3>
-          <p>Shows client and server IP addresses and resolved DNS entries for the target.</p>
-        </div>
-        <div class="feature">
-          <h3>Scriptable</h3>
-          <p>Use the CLI for automation and batch requests with controlled concurrency.</p>
-        </div>
-      </section>
 
-      <section id="cli" class="two-col">
-        <div>
-          <h2>Command-line interface</h2>
-          <p>Reuse the same HTTP engine from the GUI in a headless workflow.</p>
-          <pre><code>peek cli aceapp.dev
-peek cli -X POST -d '{"k":"v"}' aceapp.dev
-peek batch -c 10 -f json urls.txt</code></pre>
-        </div>
-        <div>
-          <h2>Download</h2>
-          <p>Grab the latest build for your platform or build from source.</p>
-          <div class="download-list">
-            <a class="btn" href="#">macOS</a>
-            <a class="btn" href="#">Linux</a>
-            <a class="btn" href="#">Windows</a>
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+              </svg>
+            </div>
+            <h3>Lightning Fast</h3>
+            <p>Built with Rust for maximum performance. Zero latency, instant responses, minimal memory footprint.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0110 0v4"/>
+              </svg>
+            </div>
+            <h3>SSL/TLS Support</h3>
+            <p>Full HTTPS support with certificate validation. Toggle SSL verification for development environments.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+              </svg>
+            </div>
+            <h3>Custom Headers</h3>
+            <p>Add any custom headers, authentication tokens, and configure advanced request parameters.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="16 18 22 12 16 6"/>
+                <polyline points="8 6 2 12 8 18"/>
+              </svg>
+            </div>
+            <h3>Response Formatting</h3>
+            <p>Automatic JSON, XML, and HTML formatting. Syntax highlighting for easy reading.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+            </div>
+            <h3>Network Insights</h3>
+            <p>View DNS resolution, IP addresses, response times, and detailed connection information.</p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 7h16M4 12h16M4 17h16"/>
+              </svg>
+            </div>
+            <h3>Batch Requests</h3>
+            <p>Run multiple requests in parallel with configurable concurrency limits via CLI.</p>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section class="footer-cta">
-        <h3>Ready to try peek?</h3>
-        <p>Download the app or use the CLI — quick to run, easy to integrate.</p>
-        <div><a class="btn btn-primary" href="#download">Get peek</a></div>
-      </section>
-    </main>
+    <!-- CLI Section -->
+    <section id="cli" class="cli-section">
+      <div class="container">
+        <div class="cli-grid">
+          <div class="cli-content">
+            <div class="section-label">Command Line Interface</div>
+            <h2>Automate with CLI</h2>
+            <p>The same powerful HTTP engine, now scriptable. Perfect for CI/CD, monitoring, and automation workflows.</p>
+            
+            <div class="cli-features">
+              <div class="cli-feature">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span>Simple command syntax</span>
+              </div>
+              <div class="cli-feature">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span>JSON output for parsing</span>
+              </div>
+              <div class="cli-feature">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span>Batch processing support</span>
+              </div>
+              <div class="cli-feature">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span>Concurrency control</span>
+              </div>
+            </div>
+          </div>
 
-    <footer class="site-footer">
-      <div class="container footer-inner">
-        <div>© <a href="https://ropean.org">Ropean</a> 2025</div>
-        <div><a href="https://github.com/ropean/peek/blob/main/LICENSE">MIT License</a></div>
+          <div class="cli-terminal">
+            <div class="terminal-header">
+              <div class="terminal-controls">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="terminal-title">terminal</div>
+            </div>
+            <div class="terminal-content">
+<pre><code><span class="prompt">$</span> peek cli https://api.github.com
+<span class="comment"># Quick GET request</span>
+
+<span class="prompt">$</span> peek cli -X POST -H "Content-Type: application/json" \
+  -d '{"key":"value"}' https://api.example.com
+<span class="comment"># POST with custom headers</span>
+
+<span class="prompt">$</span> peek batch -c 10 -f json urls.txt
+<span class="comment"># Batch process 10 concurrent requests</span>
+
+<span class="output">✓ Processed 150 requests in 2.3s</span></code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Download Section -->
+    <section id="download" class="download-section">
+      <div class="container">
+        <div class="section-header">
+          <h2>Download peek</h2>
+          <p>Choose your platform and start debugging HTTP requests today</p>
+        </div>
+
+        <div class="download-grid">
+          <div class="download-card">
+            <div class="download-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+              </svg>
+            </div>
+            <h3>macOS</h3>
+            <p>Universal binary for Intel & Apple Silicon</p>
+            <a href="#" class="btn btn-primary">Download for macOS</a>
+            <div class="download-meta">macOS 11.0 or later</div>
+          </div>
+
+          <div class="download-card">
+            <div class="download-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M22.12 10.46L12 1.63 1.88 10.46 2.55 11.17 4 9.85v10.42h16V9.85l1.45 1.32.67-.71M12 3.02l7 6.37V18.4H5v-8.81l7-6.37M7 14h10v1H7v-1z"/>
+              </svg>
+            </div>
+            <h3>Linux</h3>
+            <p>AppImage, .deb, and .rpm packages</p>
+            <a href="#" class="btn btn-primary">Download for Linux</a>
+            <div class="download-meta">x86_64 & ARM64</div>
+          </div>
+
+          <div class="download-card">
+            <div class="download-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 12V6.75L9 5.43V11.4L3 12m6 0L15 10.46V4.43L9 6.13V12m6-1.54L21 9.13V3L15 4.43V10.46M9 12.12V18L15 16.2V10.46L9 12.12m6 4.08L21 13.8V9.13L15 10.46V16.2M3 12.11L9 13.44V18L3 16.69V12.11z"/>
+              </svg>
+            </div>
+            <h3>Windows</h3>
+            <p>Portable .exe and installer</p>
+            <a href="#" class="btn btn-primary">Download for Windows</a>
+            <div class="download-meta">Windows 10 or later</div>
+          </div>
+        </div>
+
+        <div class="download-alt">
+          <p>Prefer to build from source? <a href="https://github.com/ropean/peek">Check out the GitHub repository</a></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+      <div class="container">
+        <div class="cta-content">
+          <h2>Ready to peek into HTTP?</h2>
+          <p>Join developers who trust peek for their HTTP debugging needs</p>
+          <div class="cta-buttons">
+            <a class="btn btn-primary btn-large" href="#download">Download Now</a>
+            <a class="btn btn-outline btn-large" href="https://github.com/ropean/peek">View on GitHub</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand">
+            <div class="brand">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="5" fill="url(#gradient2)"/>
+                <path d="M7 12h10M7 8h10M7 16h7" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+                <defs>
+                  <linearGradient id="gradient2" x1="3" y1="3" x2="21" y2="21">
+                    <stop offset="0%" stop-color="#7c3aed"/>
+                    <stop offset="100%" stop-color="#14b8a6"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <span class="brand-text">peek</span>
+            </div>
+            <p class="footer-tagline">Modern HTTP inspector for developers</p>
+          </div>
+
+          <div class="footer-links">
+            <div class="footer-column">
+              <h4>Product</h4>
+              <a href="#features">Features</a>
+              <a href="#cli">CLI Documentation</a>
+              <a href="#download">Download</a>
+            </div>
+
+            <div class="footer-column">
+              <h4>Resources</h4>
+              <a href="https://github.com/ropean/peek">GitHub</a>
+              <a href="https://github.com/ropean/peek/issues">Issue Tracker</a>
+              <a href="https://github.com/ropean/peek/blob/main/LICENSE">License</a>
+            </div>
+
+            <div class="footer-column">
+              <h4>Community</h4>
+              <a href="https://github.com/ropean/peek/discussions">Discussions</a>
+              <a href="https://github.com/ropean/peek/blob/main/CONTRIBUTING.md">Contributing</a>
+              <a href="https://ropean.org">About</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-bottom">
+          <p>&copy; 2025 <a href="https://ropean.org">Ropean</a>. Released under the MIT License.</p>
+          <div class="footer-social">
+            <a href="https://github.com/ropean/peek" aria-label="GitHub">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+              </svg>
+            </a>
+          </div>
+        </div>
       </div>
     </footer>
-
   </body>
 </html>
