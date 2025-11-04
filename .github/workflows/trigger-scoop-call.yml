@@ -1,0 +1,54 @@
+name: Update Scoop Bucket
+
+on:
+  workflow_run:
+    workflows: ['Build and Release']
+    types:
+      - completed
+
+jobs:
+  # First, get the tag from the workflow run
+  get-tag:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.get-tag.outputs.tag }}
+    steps:
+      - name: Get tag from workflow run
+        id: get-tag
+        run: |
+          if [[ "${{ github.event.workflow_run.head_branch }}" == refs/tags/* ]]; then
+            TAG="${{ github.event.workflow_run.head_branch }}"
+            TAG="${TAG#refs/tags/}"
+          else
+            # Try to get from ref name
+            TAG="${{ github.event.workflow_run.head_branch }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Detected tag: $TAG"
+
+  update-scoop:
+    needs: get-tag
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    uses: ropean/scoop-ropean/.github/workflows/update-scoop-call.yml@main
+    with:
+      tag: ${{ needs.get-tag.outputs.tag }}
+
+      app_name: 'peek'
+      exe_name: 'peek-windows-x64.exe'
+
+      source_repo: ${{ github.repository }}
+
+      description: 'A HTTP inspector, providing a modern GUI for HTTP request testing and analysis.'
+      homepage: 'https://peek.aceapp.dev/'
+      license_identifier: 'MIT'
+      license_url: 'https://github.com/ropean/peek/blob/main/LICENSE'
+
+      shortcut_name: 'peek'
+      shortcut_description: 'HTTP inspector'
+
+      notes: 'Peek is a powerful tool for inspecting and testing HTTP requests.'
+
+    secrets:
+      source_repo_token: ${{ secrets.GITHUB_TOKEN }}
+      deploy_key: ${{ secrets.SCOOP_ROPEAN_DEPLOY_KEY }}

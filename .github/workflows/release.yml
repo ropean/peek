@@ -1,0 +1,249 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform.target }}
+    runs-on: ${{ matrix.platform.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          # Windows
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: peek-windows-x64.exe
+            upx: true
+            strip: false
+          # - os: windows-latest
+          #   target: i686-pc-windows-msvc
+          #   name: peek-windows-x86.exe
+          #   upx: true
+          #   strip: false
+
+          # macOS
+          # - os: macos-latest
+          #   target: x86_64-apple-darwin
+          #   name: peek-macos-x64
+          #   upx: true
+          #   strip: false
+          # - os: macos-latest
+          #   target: aarch64-apple-darwin
+          #   name: peek-macos-arm64
+          #   upx: false # UPX doesn't support ARM64 macOS well
+          #   strip: true # Use strip instead
+
+          # Linux
+          # - os: ubuntu-latest
+          #   target: x86_64-unknown-linux-gnu
+          #   name: peek-linux-x64
+          #   upx: true
+          #   strip: false
+          # - os: ubuntu-latest
+          #   target: i686-unknown-linux-gnu
+          #   name: peek-linux-x86
+          #   upx: true
+          #   strip: false
+          # - os: ubuntu-latest
+          #   target: aarch64-unknown-linux-gnu
+          #   name: peek-linux-arm64
+          #   upx: true
+          #   strip: false
+          # - os: ubuntu-latest
+          #   target: armv7-unknown-linux-gnueabihf
+          #   name: peek-linux-armv7
+          #   upx: true
+          #   strip: false
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.target }}
+
+      - name: Install Linux dependencies (x86)
+        if: matrix.platform.target == 'i686-unknown-linux-gnu'
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib g++-multilib libssl-dev:i386
+
+      - name: Install Linux dependencies (ARM64)
+        if: matrix.platform.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Install Linux dependencies (ARMv7)
+        if: matrix.platform.target == 'armv7-unknown-linux-gnueabihf'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ matrix.platform.target }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.platform.target }}
+
+      - name: Install UPX (Windows)
+        if: runner.os == 'Windows' && matrix.platform.upx
+        run: choco install upx -y
+
+      - name: Install UPX (macOS)
+        if: runner.os == 'macOS' && matrix.platform.upx
+        run: brew install upx
+
+      - name: Install UPX (Linux)
+        if: runner.os == 'Linux' && matrix.platform.upx
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y upx
+
+      - name: Compress with UPX (Windows)
+        if: runner.os == 'Windows' && matrix.platform.upx
+        run: |
+          upx --best --lzma target/${{ matrix.platform.target }}/release/peek.exe
+        continue-on-error: true
+
+      - name: Compress with UPX (Unix)
+        if: runner.os != 'Windows' && matrix.platform.upx
+        run: |
+          upx --best --lzma target/${{ matrix.platform.target }}/release/peek
+        continue-on-error: true
+
+      - name: Strip binary (Alternative compression for ARM64 macOS)
+        if: matrix.platform.strip
+        run: |
+          echo "Original size:"
+          ls -lh target/${{ matrix.platform.target }}/release/peek
+          strip target/${{ matrix.platform.target }}/release/peek
+          echo "After stripping:"
+          ls -lh target/${{ matrix.platform.target }}/release/peek
+
+      - name: Rename binary (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          Copy-Item target/${{ matrix.platform.target }}/release/peek.exe ${{ matrix.platform.name }}
+
+      - name: Rename binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          cp target/${{ matrix.platform.target }}/release/peek ${{ matrix.platform.name }}
+          chmod +x ${{ matrix.platform.name }}
+
+      - name: Calculate checksums (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $hash = Get-FileHash -Algorithm SHA256 ${{ matrix.platform.name }}
+          "$($hash.Hash.ToLower())  ${{ matrix.platform.name }}" | Out-File -FilePath ${{ matrix.platform.name }}.sha256 -Encoding ASCII
+
+      - name: Calculate checksums (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          shasum -a 256 ${{ matrix.platform.name }} > ${{ matrix.platform.name }}.sha256
+
+      - name: Display file info (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $size = (Get-Item ${{ matrix.platform.name }}).Length / 1MB
+          Write-Host "File: ${{ matrix.platform.name }}"
+          Write-Host "Size: $([math]::Round($size, 2)) MB"
+          Get-Content ${{ matrix.platform.name }}.sha256
+
+      - name: Display file info (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          ls -lh ${{ matrix.platform.name }}
+          cat ${{ matrix.platform.name }}.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform.name }}
+          path: |
+            ${{ matrix.platform.name }}
+            ${{ matrix.platform.name }}.sha256
+          retention-days: 7
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{ matrix.platform.name }}
+            ${{ matrix.platform.name }}.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Create a summary of all builds
+  summary:
+    name: Build Summary
+    needs: build
+    runs-on: ubuntu-latest
+    if: always()
+    outputs:
+      release_tag: ${{ steps.set-tag.outputs.tag }}
+
+    steps:
+      - name: Set release tag output
+        id: set-tag
+        run: echo "tag=${{ env.RELEASE_TAG }}" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display summary
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Size | SHA256 |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          for dir in artifacts/*/; do
+            if [ -d "$dir" ]; then
+              for file in "$dir"*; do
+                if [[ ! "$file" == *.sha256 ]]; then
+                  filename=$(basename "$file")
+                  size=$(ls -lh "$file" | awk '{print $5}')
+                  sha256=$(cat "${file}.sha256" 2>/dev/null | awk '{print substr($1,1,16)"..."}' || echo "N/A")
+                  echo "| $filename | $size | \`$sha256\` |" >> $GITHUB_STEP_SUMMARY
+                fi
+              done
+            fi
+          done
