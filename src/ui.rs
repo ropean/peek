@@ -274,9 +274,15 @@ impl eframe::App for PeekApp {
                 // All checkbox
                 ui.checkbox(&mut self.query_all, "All");
 
-                // Request button
+                // Request button (black background, white text)
                 let button_text = if self.is_loading { "Loading..." } else { "Request" };
-                if ui.add_enabled(!self.is_loading, egui::Button::new(button_text)).clicked() {
+                let button = egui::Button::new(
+                    egui::RichText::new(button_text)
+                        .color(egui::Color32::WHITE)
+                )
+                .fill(egui::Color32::BLACK);
+                
+                if ui.add_enabled(!self.is_loading, button).clicked() {
                     self.make_request();
                 }
             });
