@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2024"
 license = "MIT"
 description = "Peek - GUI + CLI HTTP inspector"
-authors = ["Ropean mail@ropean.org"]
+authors = ["Ropean", "Claude", "GPT-5 mini"]
 homepage = "https://peek.aceapp.dev"
 
 [dependencies]
