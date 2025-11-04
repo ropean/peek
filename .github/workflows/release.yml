@@ -138,16 +138,33 @@ jobs:
       - name: Build with build.sh
         shell: bash
         run: |
-          # For cross-compilation, we need to set the target
-          if [ "${{ matrix.platform.target }}" != "$(rustc -vV | sed -n 's|host: ||p')" ]; then
+          # Check if this is native build (host matches target)
+          HOST_TARGET=$(rustc -vV | sed -n 's|host: ||p')
+          BUILD_TARGET="${{ matrix.platform.target }}"
+
+          if [ "$BUILD_TARGET" = "$HOST_TARGET" ]; then
+            # Native build: use build.sh for consistency
+            echo "Native build detected, using build.sh"
+            chmod +x scripts/build.sh
+            ./scripts/build.sh
+            
+            # Move binary to target-specific directory for consistent path handling
+            mkdir -p "target/$BUILD_TARGET/release"
+            if [ "${{ runner.os }}" = "Windows" ]; then
+              cp target/release/peek.exe "target/$BUILD_TARGET/release/peek.exe"
+            else
+              cp target/release/peek "target/$BUILD_TARGET/release/peek"
+            fi
+          else
             # Cross-compilation: build directly with cargo
-            cargo build --release --target ${{ matrix.platform.target }}
+            echo "Cross-compilation build: $HOST_TARGET -> $BUILD_TARGET"
+            cargo build --release --target $BUILD_TARGET
             
             # Determine executable path
             if [ "${{ runner.os }}" = "Windows" ]; then
-              EXEC_PATH="target/${{ matrix.platform.target }}/release/peek.exe"
+              EXEC_PATH="target/$BUILD_TARGET/release/peek.exe"
             else
-              EXEC_PATH="target/${{ matrix.platform.target }}/release/peek"
+              EXEC_PATH="target/$BUILD_TARGET/release/peek"
             fi
             
             # Apply UPX compression if enabled
@@ -164,10 +181,13 @@ jobs:
               echo "After stripping:"
               ls -lh "$EXEC_PATH"
             fi
+          fi
+
+          # Show final binary info
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            ls -lh "target/$BUILD_TARGET/release/peek.exe"
           else
-            # Native build: use build.sh
-            chmod +x scripts/build.sh
-            ./scripts/build.sh
+            ls -lh "target/$BUILD_TARGET/release/peek"
           fi
 
       - name: Rename binary (Windows)
