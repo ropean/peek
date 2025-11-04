@@ -17,14 +17,19 @@ permissions:
   contents: read
 
 jobs:
-  # First, get the tag from the workflow run or manual input
   get-tag:
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.get-tag.outputs.tag }}
+
     steps:
-      - name: Get tag from workflow run or input
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get release tag
         id: get-tag
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
@@ -35,14 +40,27 @@ jobs:
               exit 1
             fi
           else
-            if [[ "${{ github.event.workflow_run.head_branch }}" == refs/tags/* ]]; then
-              TAG="${{ github.event.workflow_run.head_branch }}"
-              TAG="${TAG#refs/tags/}"
-            else
-              # Try to get from ref name
-              TAG="${{ github.event.workflow_run.head_branch }}"
+            # Get the latest tag from the workflow that triggered this
+            TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            
+            # If no tag found, try to get from the workflow run event
+            if [[ -z "$TAG" ]]; then
+              # Check if the head_branch is a tag reference
+              if [[ "${{ github.event.workflow_run.head_branch }}" == refs/tags/* ]]; then
+                TAG="${{ github.event.workflow_run.head_branch }}"
+                TAG="${TAG#refs/tags/}"
+              else
+                # Last resort: get the most recent tag
+                TAG=$(git tag --sort=-version:refname | head -n 1)
+              fi
+            fi
+            
+            if [[ -z "$TAG" ]]; then
+              echo "Error: Could not determine release tag"
+              exit 1
             fi
           fi
+
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Detected tag: $TAG"
 

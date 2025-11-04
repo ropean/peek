@@ -17,14 +17,17 @@ permissions:
   contents: read
 
 jobs:
-  # Get the tag from the workflow run or manual input
-  get-tag:
+  upload-to-r2:
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.get-tag.outputs.tag }}
+
     steps:
-      - name: Get tag from workflow run or input
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get release tag
         id: get-tag
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
@@ -35,28 +38,36 @@ jobs:
               exit 1
             fi
           else
-            if [[ "${{ github.event.workflow_run.head_branch }}" == refs/tags/* ]]; then
-              TAG="${{ github.event.workflow_run.head_branch }}"
-              TAG="${TAG#refs/tags/}"
-            else
-              # Try to get from ref name
-              TAG="${{ github.event.workflow_run.head_branch }}"
+            # Get the latest tag from the workflow that triggered this
+            # The workflow_run event is triggered by a tag push
+            TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            
+            # If no tag found, try to get from the workflow run event
+            if [[ -z "$TAG" ]]; then
+              # Check if the head_branch is a tag reference
+              if [[ "${{ github.event.workflow_run.head_branch }}" == refs/tags/* ]]; then
+                TAG="${{ github.event.workflow_run.head_branch }}"
+                TAG="${TAG#refs/tags/}"
+              else
+                # Last resort: get the most recent tag
+                TAG=$(git tag --sort=-version:refname | head -n 1)
+              fi
+            fi
+            
+            if [[ -z "$TAG" ]]; then
+              echo "Error: Could not determine release tag"
+              exit 1
             fi
           fi
+
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Detected tag: $TAG"
 
-  upload-to-r2:
-    needs: get-tag
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
-    runs-on: ubuntu-latest
-
-    steps:
       - name: Download release assets
         uses: robinraju/release-downloader@v1.10
         with:
           repository: ${{ github.repository }}
-          tag: ${{ needs.get-tag.outputs.tag }}
+          tag: ${{ steps.get-tag.outputs.tag }}
           fileName: 'peek-*'
           out-file-path: 'downloads'
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -76,7 +87,7 @@ jobs:
       - name: Upload files to Cloudflare R2
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          TAG: ${{ needs.get-tag.outputs.tag }}
+          TAG: ${{ steps.get-tag.outputs.tag }}
         run: |
           # R2 endpoint format: https://<account_id>.r2.cloudflarestorage.com
           R2_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
@@ -115,7 +126,7 @@ jobs:
 
       - name: Create download index
         env:
-          TAG: ${{ needs.get-tag.outputs.tag }}
+          TAG: ${{ steps.get-tag.outputs.tag }}
         run: |
           cat > downloads/index.html << 'EOF'
           <!DOCTYPE html>
@@ -160,7 +171,7 @@ jobs:
       - name: Upload index to R2
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          TAG: ${{ needs.get-tag.outputs.tag }}
+          TAG: ${{ steps.get-tag.outputs.tag }}
         run: |
           R2_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
           BUCKET_NAME="r2-aceapp-dev"
@@ -175,7 +186,7 @@ jobs:
 
       - name: Summary
         env:
-          TAG: ${{ needs.get-tag.outputs.tag }}
+          TAG: ${{ steps.get-tag.outputs.tag }}
         run: |
           echo "## 🎉 Upload Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
