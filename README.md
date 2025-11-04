@@ -39,7 +39,7 @@ A HTTP inspector. It's Rust port of the HttpStatus application, providing a mode
 
 ## Usage
 
-1. **Enter URL**: Type the target URL in the text field (e.g., `example.com`, `https://api.github.com`)
+1. **Enter URL**: Type the target URL in the text field (e.g., `aceapp.dev`, `https://peek.aceapp.dev/health.json`)
 2. **Configure Options**:
    - **SSL**: Check to force HTTPS protocol
    - **Post**: Check to use POST method instead of GET
@@ -69,19 +69,19 @@ A HTTP inspector. It's Rust port of the HttpStatus application, providing a mode
    Single request with defaults (SSL enabled by default):
 
    ```fish
-   peek cli example.com
+   peek cli aceapp.dev
    ```
 
    Force HTTP (no SSL) and request JSON output:
 
    ```fish
-   peek cli --no-ssl -f json example.com
+   peek cli --no-ssl -f json aceapp.dev
    ```
 
    POST with body:
 
    ```fish
-   peek cli -X POST -d '{"key":"value"}' example.com
+   peek cli -X POST -d '{"key":"value"}' aceapp.dev
    ```
 
    Batch mode: read URLs from a file (one per line) and run with concurrency 10:
@@ -97,7 +97,7 @@ A HTTP inspector. It's Rust port of the HttpStatus application, providing a mode
    ```json
    [
      {
-       "requested_url": "example.com",
+       "requested_url": "aceapp.dev",
        "response": {
          /* HttpResponse object */
        }
