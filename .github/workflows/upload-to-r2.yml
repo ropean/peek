@@ -1,0 +1,199 @@
+name: Upload to Cloudflare R2
+
+on:
+  workflow_run:
+    workflows: ['Build and Release']
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to upload (must start with v)'
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  # Get the tag from the workflow run or manual input
+  get-tag:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.get-tag.outputs.tag }}
+    steps:
+      - name: Get tag from workflow run or input
+        id: get-tag
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            TAG="${{ github.event.inputs.tag }}"
+            # Validate that tag starts with 'v'
+            if [[ ! "$TAG" =~ ^v ]]; then
+              echo "Error: Tag must start with 'v'"
+              exit 1
+            fi
+          else
+            if [[ "${{ github.event.workflow_run.head_branch }}" == refs/tags/* ]]; then
+              TAG="${{ github.event.workflow_run.head_branch }}"
+              TAG="${TAG#refs/tags/}"
+            else
+              # Try to get from ref name
+              TAG="${{ github.event.workflow_run.head_branch }}"
+            fi
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Detected tag: $TAG"
+
+  upload-to-r2:
+    needs: get-tag
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download release assets
+        uses: robinraju/release-downloader@v1.10
+        with:
+          repository: ${{ github.repository }}
+          tag: ${{ needs.get-tag.outputs.tag }}
+          fileName: 'peek-*'
+          out-file-path: 'downloads'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List downloaded files
+        run: |
+          echo "Downloaded files:"
+          ls -lh downloads/
+
+      - name: Configure AWS CLI for R2
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.R2_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          aws-region: auto
+
+      - name: Upload files to Cloudflare R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          TAG: ${{ needs.get-tag.outputs.tag }}
+        run: |
+          # R2 endpoint format: https://<account_id>.r2.cloudflarestorage.com
+          R2_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          BUCKET_NAME="r2-aceapp-dev"
+
+          echo "Uploading to R2 bucket: $BUCKET_NAME"
+          echo "R2 endpoint: $R2_ENDPOINT"
+          echo "Version path: /peek/${TAG}/"
+          echo ""
+
+          # Upload each file to R2
+          for file in downloads/peek-*; do
+            if [ -f "$file" ]; then
+              filename=$(basename "$file")
+              echo "Uploading: $filename"
+              
+              # Determine content type based on file extension
+              if [[ "$filename" == *.exe ]]; then
+                CONTENT_TYPE="application/x-msdownload"
+              else
+                CONTENT_TYPE="application/octet-stream"
+              fi
+              
+              aws s3 cp "$file" \
+                "s3://${BUCKET_NAME}/peek/${TAG}/${filename}" \
+                --endpoint-url="$R2_ENDPOINT" \
+                --content-type="$CONTENT_TYPE" \
+                --metadata "version=${TAG},uploaded=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+              
+              echo "✓ Uploaded: https://r2.aceapp.dev/peek/${TAG}/${filename}"
+            fi
+          done
+
+          echo ""
+          echo "All files uploaded successfully!"
+
+      - name: Create download index
+        env:
+          TAG: ${{ needs.get-tag.outputs.tag }}
+        run: |
+          cat > downloads/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="utf-8">
+            <title>peek $TAG - Download</title>
+            <style>
+              body { font-family: system-ui; max-width: 800px; margin: 50px auto; padding: 20px; }
+              h1 { color: #7c3aed; }
+              .file-list { list-style: none; padding: 0; }
+              .file-list li { padding: 10px; margin: 5px 0; background: #f5f5f5; border-radius: 5px; }
+              .file-list a { text-decoration: none; color: #333; font-weight: bold; }
+              .file-list a:hover { color: #7c3aed; }
+              .size { color: #666; float: right; }
+            </style>
+          </head>
+          <body>
+            <h1>peek $TAG - Downloads</h1>
+            <ul class="file-list">
+          EOF
+
+          # Add each file to the index
+          for file in downloads/peek-*; do
+            if [ -f "$file" ] && [[ ! "$file" == *.html ]]; then
+              filename=$(basename "$file")
+              size=$(ls -lh "$file" | awk '{print $5}')
+              echo "<li><a href=\"$filename\">$filename</a> <span class=\"size\">$size</span></li>" >> downloads/index.html
+            fi
+          done
+
+          cat >> downloads/index.html << 'EOF'
+            </ul>
+            <p><a href="https://github.com/ropean/peek/releases/tag/$TAG">View Release Notes</a></p>
+          </body>
+          </html>
+          EOF
+
+          # Replace $TAG with actual version
+          sed -i "s/\$TAG/${TAG}/g" downloads/index.html
+
+      - name: Upload index to R2
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          TAG: ${{ needs.get-tag.outputs.tag }}
+        run: |
+          R2_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          BUCKET_NAME="r2-aceapp-dev"
+
+          aws s3 cp downloads/index.html \
+            "s3://${BUCKET_NAME}/peek/${TAG}/index.html" \
+            --endpoint-url="$R2_ENDPOINT" \
+            --content-type="text/html" \
+            --metadata "version=${TAG}"
+
+          echo "✓ Index page: https://r2.aceapp.dev/peek/${TAG}/index.html"
+
+      - name: Summary
+        env:
+          TAG: ${{ needs.get-tag.outputs.tag }}
+        run: |
+          echo "## 🎉 Upload Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Version: **${TAG}**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Download URLs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform | Download Link |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|---------------|" >> $GITHUB_STEP_SUMMARY
+
+          for file in downloads/peek-*; do
+            if [ -f "$file" ] && [[ ! "$file" == *.html ]]; then
+              filename=$(basename "$file")
+              echo "| $filename | https://r2.aceapp.dev/peek/${TAG}/${filename} |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Index Page" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "https://r2.aceapp.dev/peek/${TAG}/index.html" >> $GITHUB_STEP_SUMMARY
