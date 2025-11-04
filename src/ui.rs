@@ -66,6 +66,8 @@ impl PeekApp {
                 use_ssl: self.use_ssl,
                 use_post: self.use_post,
                 allow_redirects: self.allow_redirects,
+                body: None,
+                timeout_secs: None,
             }
         }).collect();
 

@@ -1,0 +1,5 @@
+peek — HTTP inspector
+Name: ${name}
+Version: ${version}
+Description: ${description}
+Homepage: ${homepage}

@@ -17,6 +17,8 @@ anyhow = "1.0"
 env_logger = "0.10"
 hostname = "0.3"
 local-ip-address = "0.6"
+clap = { version = "4.5", features = ["derive"] }
+futures = "0.3"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["winuser", "windef"] }

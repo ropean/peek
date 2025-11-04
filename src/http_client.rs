@@ -11,6 +11,8 @@ pub struct RequestConfig {
     pub use_ssl: bool,
     pub use_post: bool,
     pub allow_redirects: bool,
+    pub body: Option<String>,
+    pub timeout_secs: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -50,26 +52,41 @@ impl HttpClient {
         // Get server IPs
         let server_ips = crate::network_utils::resolve_domain(&url.host_str().unwrap_or("")).await?;
 
-        // Create a client with appropriate redirect policy
-        let client = if config.allow_redirects {
-            // Use the default client (follows redirects)
-            &self.client
+        // Create a client with appropriate redirect policy and timeout.
+        // If the caller wants the default behavior (follow redirects, default timeout),
+        // reuse the shared client. Otherwise build a temporary client with the
+        // requested timeout/redirect policy.
+        let client_ref: Client = if config.allow_redirects && config.timeout_secs.is_none() {
+            // Use the pre-built client
+            self.client.clone()
         } else {
-            // Create a temporary client that doesn't follow redirects
-            &Client::builder()
-                .timeout(Duration::from_secs(30))
-                .danger_accept_invalid_certs(true)
-                .redirect(reqwest::redirect::Policy::none())
-                .build()
-                .expect("Failed to create no-redirect HTTP client")
+            let mut builder = Client::builder()
+                .danger_accept_invalid_certs(true);
+
+            if let Some(secs) = config.timeout_secs {
+                builder = builder.timeout(Duration::from_secs(secs));
+            } else {
+                builder = builder.timeout(Duration::from_secs(30));
+            }
+
+            if !config.allow_redirects {
+                builder = builder.redirect(reqwest::redirect::Policy::none());
+            }
+
+            builder.build().expect("Failed to create temporary HTTP client")
         };
+
+        // We want a reference to a client for request creation below.
+        let client = &client_ref;
 
         // Create request
         let method = if config.use_post { Method::POST } else { Method::GET };
         
         let mut request = client.request(method, url.as_str());
         
-        if config.use_post {
+        if let Some(body) = config.body {
+            request = request.body(body);
+        } else if config.use_post {
             request = request.body("");
         }
 
