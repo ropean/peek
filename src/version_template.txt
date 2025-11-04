@@ -1,5 +1,10 @@
 peek — HTTP inspector
+
 Name: ${name}
 Version: ${version}
 Description: ${description}
-Homepage: ${homepage}
+Authors: ${authors}
+License: ${license}
+Homepage: 
+
+Thank you for trying peek — a small, focused HTTP inspection tool. Visit the project homepage to learn more and contribute.

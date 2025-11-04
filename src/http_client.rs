@@ -1,4 +1,5 @@
 use anyhow::Result;
+use async_trait::async_trait;
 use reqwest::{Client, Method};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -29,6 +30,11 @@ pub struct HttpResponse {
 
 pub struct HttpClient {
     client: Client,
+}
+
+#[async_trait]
+pub trait Requester: Send + Sync {
+    async fn make_request(&self, config: RequestConfig) -> Result<HttpResponse>;
 }
 
 impl HttpClient {
@@ -132,5 +138,12 @@ impl HttpClient {
         };
 
         Ok(Url::parse(&final_url)?)
+    }
+}
+
+#[async_trait]
+impl Requester for HttpClient {
+    async fn make_request(&self, config: RequestConfig) -> Result<HttpResponse> {
+        HttpClient::make_request(self, config).await
     }
 }
