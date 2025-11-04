@@ -82,7 +82,7 @@
         "author": {
           "@type": "Organization",
           "name": "Ropean",
-          "url": "https://aceapp.dev"
+          "url": "https://ropean.org"
         },
         "url": "https://peek.aceapp.dev",
         "downloadUrl": "https://github.com/ropean/peek/releases",
@@ -100,7 +100,7 @@
           "Batch processing"
         ],
         "screenshot": "https://peek.aceapp.dev/screenshot.png",
-        "softwareVersion": "1.1.2",
+        "softwareVersion": "1.1.3",
         "releaseNotes": "https://github.com/ropean/peek/releases",
         "aggregateRating": {
           "@type": "AggregateRating",
@@ -118,7 +118,7 @@
         <div class="brand">
           <img src="./logo.svg" class="logo" alt="peek HTTP Inspector Logo" />
 
-          <a href="/" class="brand-text" title="peek - HTTP Inspector & API Debugger">peek</a>
+          <a href="./" class="brand-text" title="peek - HTTP Inspector & API Debugger">peek</a>
         </div>
         <div class="nav-links">
           <a href="#features">Features</a>
@@ -217,12 +217,13 @@
                 </div>
               </div>
               <div class="demo-response">
-                <pre><code>{
-                    "login": "ropean",
-                    "name": "Ropean",
-                    "public_repos": 42,
-                    "followers": 1337
-                  }
+                <pre><code>
+{
+  "login": "ropean",
+  "name": "Ropean",
+  "public_repos": 42,
+  "followers": 1337
+}
                 </code></pre>
               </div>
             </div>
@@ -356,17 +357,19 @@
               <div class="terminal-title">terminal</div>
             </div>
             <div class="terminal-content">
-              <pre><code><span class="prompt">$</span> peek cli https://api.github.com
+              <pre><code>
+<span class="prompt">$</span> peek https://api.github.com
 <span class="comment"># Quick GET request</span>
 
-<span class="prompt">$</span> peek cli -X POST -H "Content-Type: application/json" \
+<span class="prompt">$</span> peek -X POST -H "Content-Type: application/json" \
   -d '{"key":"value"}' https://api.example.com
 <span class="comment"># POST with custom headers</span>
 
 <span class="prompt">$</span> peek batch -c 10 -f json urls.txt
 <span class="comment"># Batch process 10 concurrent requests</span>
 
-<span class="output">✓ Processed 150 requests in 2.3s</span></code></pre>
+<span class="output">✓ Processed 150 requests in 2.3s</span>
+              </code></pre>
             </div>
           </div>
         </div>
@@ -380,11 +383,12 @@
           <h2>Download peek HTTP Inspector - Free for All Platforms</h2>
           <p>
             Choose your operating system and start debugging HTTP requests, testing APIs, and inspecting network traffic today. 100% free and open
-            source.
+            source. Version 1.1.3 now available.
           </p>
         </div>
 
         <div class="download-grid">
+          <!-- macOS Card -->
           <div class="download-card">
             <div class="download-icon">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
@@ -394,11 +398,20 @@
               </svg>
             </div>
             <h3>macOS HTTP Inspector</h3>
-            <p>Universal binary optimized for Intel & Apple Silicon Macs. Native performance for HTTP debugging.</p>
-            <a href="#" class="btn btn-primary">Download for macOS</a>
-            <div class="download-meta">macOS 11.0 or later • Intel & M1/M2</div>
+            <p>Optimized for Apple Silicon. Native performance for HTTP debugging on M1/M2/M3 Macs.</p>
+            <a href="https://github.com/ropean/peek/releases/download/v1.1.3/peek-macos-arm64" class="btn btn-primary" download>
+              Download for macOS (ARM64)
+            </a>
+            <div class="download-meta">
+              macOS 11.0 or later • 4.92 MB
+              <br />
+              <a href="https://github.com/ropean/peek/releases/download/v1.1.3/peek-macos-x64" style="font-size: 0.85em; color: #7c3aed"
+                >Also available: Intel x64 (5.58 MB)</a
+              >
+            </div>
           </div>
 
+          <!-- Linux Card -->
           <div class="download-card">
             <div class="download-icon">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
@@ -408,11 +421,20 @@
               </svg>
             </div>
             <h3>Linux HTTP Inspector</h3>
-            <p>Multiple package formats: AppImage, .deb, and .rpm. Works on Ubuntu, Fedora, Arch, and more.</p>
-            <a href="#" class="btn btn-primary">Download for Linux</a>
-            <div class="download-meta">x86_64 & ARM64 • All major distros</div>
+            <p>Universal binary for modern Linux distributions. Works on Ubuntu, Fedora, Arch, and more.</p>
+            <a href="https://github.com/ropean/peek/releases/download/v1.1.3/peek-linux-x64" class="btn btn-primary" download>
+              Download for Linux (x64)
+            </a>
+            <div class="download-meta">
+              x86_64 • 2.89 MB
+              <br />
+              <a href="https://github.com/ropean/peek/releases/download/v1.1.3/peek-linux-x86" style="font-size: 0.85em; color: #7c3aed"
+                >Also available: x86 32-bit (2.81 MB)</a
+              >
+            </div>
           </div>
 
+          <!-- Windows Card -->
           <div class="download-card">
             <div class="download-icon">
               <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
@@ -422,14 +444,25 @@
               </svg>
             </div>
             <h3>Windows HTTP Inspector</h3>
-            <p>Portable executable and installer available. No admin rights required for portable version.</p>
-            <a href="#" class="btn btn-primary">Download for Windows</a>
-            <div class="download-meta">Windows 10/11 • x64 architecture</div>
+            <p>Portable executable - no installation needed. Double-click to launch GUI, or use from command line.</p>
+            <a href="https://github.com/ropean/peek/releases/download/v1.1.3/peek-windows-x64.exe" class="btn btn-primary" download>
+              Download for Windows (x64)
+            </a>
+            <div class="download-meta">
+              Windows 10/11 • 2.34 MB
+              <br />
+              <a href="https://github.com/ropean/peek/releases/download/v1.1.3/peek-windows-x86.exe" style="font-size: 0.85em; color: #7c3aed"
+                >Also available: x86 32-bit (2.14 MB)</a
+              >
+            </div>
           </div>
         </div>
 
         <div class="download-alt">
-          <p>Prefer to build from source? <a href="https://github.com/ropean/peek">Check out the GitHub repository</a></p>
+          <p>
+            Prefer to build from source? <a href="https://github.com/ropean/peek">Check out the GitHub repository</a> •
+            <a href="https://github.com/ropean/peek/releases">View all releases</a>
+          </p>
         </div>
       </div>
     </section>
@@ -490,7 +523,7 @@
         </div>
 
         <div class="footer-bottom">
-          <p>&copy; 2025 <a href="https://aceapp.dev">Ropean</a>. Released under the MIT License.</p>
+          <p>&copy; 2025 <a href="https://ropean.org">Ropean</a>. Released under the MIT License.</p>
           <div class="footer-social">
             <a
               href="https://github.com/ropean/peek"
