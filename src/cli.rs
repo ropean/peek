@@ -181,7 +181,8 @@ pub fn run_from_args() -> i32 {
                 .replace("${version}", env!("CARGO_PKG_VERSION"))
                 .replace("${description}", env!("CARGO_PKG_DESCRIPTION"))
                 .replace("${authors}", env!("CARGO_PKG_AUTHORS"))
-                .replace("${license}", env!("CARGO_PKG_LICENSE"));
+                .replace("${license}", env!("CARGO_PKG_LICENSE"))
+                .replace("${homepage}", env!("CARGO_PKG_HOMEPAGE"));
 
             println!("{}", out);
             return 0;

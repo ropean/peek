@@ -1,10 +1,10 @@
 [package]
 name = "peek"
 version = "0.1.2"
-edition = "2025"
+edition = "2024"
 license = "MIT"
 description = "Peek - GUI + CLI HTTP inspector"
-authors = ["Ropean mail@ropean.org"]
+authors = ["Ropean", "Claude", "GPT-5 mini"]
 homepage = "https://peek.aceapp.dev"
 
 [dependencies]
