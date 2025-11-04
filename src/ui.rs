@@ -11,10 +11,12 @@ pub struct PeekApp {
     use_ssl: bool,
     use_post: bool,
     allow_redirects: bool,
+    query_all: bool,
     response_text: String,
     is_loading: bool,
-    response_receiver: Option<mpsc::Receiver<Result<HttpResponse, String>>>,
+    response_receiver: Option<mpsc::Receiver<Result<Vec<HttpResponse>, String>>>,
     last_url_input: String, // Track previous URL input to detect changes
+    first_frame: bool, // Track if this is the first frame for centering
 }
 
 impl PeekApp {
@@ -25,11 +27,21 @@ impl PeekApp {
             use_ssl: true,
             use_post: false,
             allow_redirects: false,
+            query_all: false,
             response_text: String::new(),
             is_loading: false,
             response_receiver: None,
             last_url_input: "aceapp.dev".to_string(),
+            first_frame: true,
         }
+    }
+
+    fn is_top_level_domain(url: &str) -> bool {
+        // Count the number of dots in the domain
+        // A top-level domain has exactly one dot (e.g., "aceapp.dev")
+        // A subdomain has more than one dot (e.g., "www.aceapp.dev")
+        let parts: Vec<&str> = url.split('.').collect();
+        parts.len() == 2
     }
 
     fn make_request(&mut self) {
@@ -40,32 +52,55 @@ impl PeekApp {
         self.is_loading = true;
         self.response_text = "Requesting...".to_string();
 
-        let config = RequestConfig {
-            url: self.url_input.clone(),
-            use_ssl: self.use_ssl,
-            use_post: self.use_post,
-            allow_redirects: self.allow_redirects,
-        };
-        
+        // Determine which URLs to query
+        let mut urls = vec![self.url_input.clone()];
+
+        // If query_all is enabled and this is a top-level domain, also query www.domain
+        if self.query_all && Self::is_top_level_domain(&self.url_input) {
+            urls.push(format!("www.{}", self.url_input));
+        }
+
+        let configs: Vec<RequestConfig> = urls.into_iter().map(|url| {
+            RequestConfig {
+                url,
+                use_ssl: self.use_ssl,
+                use_post: self.use_post,
+                allow_redirects: self.allow_redirects,
+            }
+        }).collect();
 
         let http_client = self.http_client.clone();
         let (tx, rx) = mpsc::channel();
         self.response_receiver = Some(rx);
-        
+
         // Spawn a new thread with its own tokio runtime
         thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
-            let result = rt.block_on(async {
+            let responses = rt.block_on(async {
                 let client = http_client.lock().unwrap();
-                client.make_request(config).await
+                let mut responses = Vec::new();
+
+                for config in configs {
+                    match client.make_request(config).await {
+                        Ok(response) => responses.push(response),
+                        Err(e) => {
+                            // If one request fails, we still want to return partial results
+                            // But we'll return an error if all fail
+                            eprintln!("Request failed: {}", e);
+                        }
+                    }
+                }
+
+                responses
             });
-            
-            let response = match result {
-                Ok(response) => Ok(response),
-                Err(e) => Err(format!("Error: {}", e)),
+
+            let result = if responses.is_empty() {
+                Err("Error: All requests failed".to_string())
+            } else {
+                Ok(responses)
             };
-            
-            let _ = tx.send(response);
+
+            let _ = tx.send(result);
         });
     }
 
@@ -95,13 +130,13 @@ impl PeekApp {
 
     fn format_response(&self, response: &HttpResponse) -> String {
         let mut output = String::new();
-        
+
         output.push_str(&format!("Your requested address is: {}\n", response.requested_url));
         if response.requested_url != response.final_url {
             output.push_str(&format!("Final URL (after redirects): {}\n", response.final_url));
         }
         output.push('\n');
-        
+
         // Client IPs
         if !response.client_ips.is_empty() {
             output.push_str("Your IP(s):");
@@ -115,7 +150,7 @@ impl PeekApp {
             }
             output.push('\n');
         }
-        
+
         // Server IPs
         if !response.server_ips.is_empty() {
             output.push_str("Responded IP(s):");
@@ -129,10 +164,10 @@ impl PeekApp {
             }
             output.push('\n');
         }
-        
+
         // Status code
         output.push_str(&format!("Responded status code: {}\n\n", response.status_code));
-        
+
         // Headers
         if !response.headers.is_empty() {
             output.push_str("Responded headers:\n");
@@ -141,25 +176,52 @@ impl PeekApp {
             }
             output.push('\n');
         }
-        
+
         // Response body (only show if not empty)
         if !response.body.trim().is_empty() {
             output.push_str("Responded source code:\n");
             output.push_str(&response.body);
         }
-        
+
+        output
+    }
+
+    fn format_responses(&self, responses: &[HttpResponse]) -> String {
+        if responses.len() == 1 {
+            return self.format_response(&responses[0]);
+        }
+
+        let mut output = String::new();
+        for (i, response) in responses.iter().enumerate() {
+            output.push_str(&format!("========== Request {} ==========\n\n", i + 1));
+            output.push_str(&self.format_response(response));
+            if i < responses.len() - 1 {
+                output.push_str("\n\n");
+            }
+        }
         output
     }
 }
 
 impl eframe::App for PeekApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Center window on first frame
+        if self.first_frame {
+            // egui 0.25 removed the `CenterOnScreen` enum variant in favor of
+            // the associated constructor `center_on_screen(ctx)` which returns
+            // an Option<ViewportCommand>.
+            if let Some(cmd) = egui::ViewportCommand::center_on_screen(ctx) {
+                ctx.send_viewport_cmd(cmd);
+            }
+            self.first_frame = false;
+        }
+
         // Check for response from background thread
         if let Some(receiver) = &self.response_receiver {
             if let Ok(result) = receiver.try_recv() {
                 match result {
-                    Ok(response) => {
-                        self.response_text = self.format_response(&response);
+                    Ok(responses) => {
+                        self.response_text = self.format_responses(&responses);
                     }
                     Err(e) => {
                         self.response_text = e;
@@ -169,15 +231,15 @@ impl eframe::App for PeekApp {
                 self.response_receiver = None;
             }
         }
-        
+
         // Request a repaint to keep checking for responses
         if self.is_loading {
             ctx.request_repaint();
         }
         
         // Top panel for controls (fixed height)
-        egui::TopBottomPanel::top("top_panel").exact_height(40.0).show(ctx, |ui| {
-            ui.add_space(5.0);
+        egui::TopBottomPanel::top("top_panel").exact_height(60.0).show(ctx, |ui| {
+            ui.add_space(10.0);
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 10.0;
                 
@@ -200,24 +262,27 @@ impl eframe::App for PeekApp {
                 
                 // SSL checkbox
                 ui.checkbox(&mut self.use_ssl, "SSL");
-                
+
                 // POST checkbox
                 ui.checkbox(&mut self.use_post, "Post");
-                
+
                 // Redirect checkbox
                 ui.checkbox(&mut self.allow_redirects, "Redirect");
-                
+
+                // All checkbox
+                ui.checkbox(&mut self.query_all, "All");
+
                 // Request button
                 let button_text = if self.is_loading { "Loading..." } else { "Request" };
                 if ui.add_enabled(!self.is_loading, egui::Button::new(button_text)).clicked() {
                     self.make_request();
                 }
             });
-            ui.add_space(5.0);
+            ui.add_space(10.0);
         });
 
         // Bottom panel for copyright (fixed height)
-        egui::TopBottomPanel::bottom("bottom_panel").exact_height(20.0).show(ctx, |ui| {
+        egui::TopBottomPanel::bottom("bottom_panel").exact_height(30.0).show(ctx, |ui| {
             ui.with_layout(egui::Layout::centered_and_justified(egui::Direction::LeftToRight), |ui| {
                 ui.label(egui::RichText::new("All rights reserved © Ropean 2025")
                     .size(11.0)
@@ -227,17 +292,17 @@ impl eframe::App for PeekApp {
 
         // Central panel for response (fills all remaining space)
         egui::CentralPanel::default().show(ctx, |ui| {
-            // Use ScrollArea to contain the TextEdit with fixed size
-            let size = ui.available_size();
             egui::ScrollArea::vertical()
-                .max_height(size.y)
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    ui.add(
+                    // Allocate the full available size to the TextEdit so it
+                    // stretches to the bottom and removes the gap to the footer.
+                    let size = ui.available_size();
+
+                    ui.add_sized(
+                        size,
                         egui::TextEdit::multiline(&mut self.response_text)
-                            .font(egui::TextStyle::Monospace)
-                            .desired_width(size.x)
-                            .desired_rows(0) // Allow unlimited rows
+                            .font(egui::TextStyle::Monospace),
                     );
                 });
         });
