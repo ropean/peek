@@ -7,6 +7,16 @@ description = "Peek - GUI + CLI HTTP inspector"
 authors = ["Ropean", "Claude", "GPT-5 mini"]
 homepage = "https://peek.aceapp.dev"
 
+# Windows GUI subsystem - no console window on startup
+# Console will be allocated dynamically if CLI args are present
+[[bin]]
+name = "peek"
+path = "src/main.rs"
+
+[package.metadata.winres]
+OriginalFilename = "peek.exe"
+ProductName = "Peek"
+
 [dependencies]
 reqwest = { version = "0.11", features = [
   "json",
@@ -43,7 +53,7 @@ image = { version = "0.24", default-features = false, features = [
 ] }
 
 [target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["winuser", "windef"] }
+winapi = { version = "0.3", features = ["winuser", "windef", "wincon"] }
 
 [build-dependencies]
 winres = "0.1"

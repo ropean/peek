@@ -10,6 +10,14 @@ mod cli;
 use http_client::HttpClient;
 use ui::PeekApp;
 
+#[cfg(windows)]
+fn attach_console() {
+    use winapi::um::wincon::{AttachConsole, ATTACH_PARENT_PROCESS};
+    unsafe {
+        AttachConsole(ATTACH_PARENT_PROCESS);
+    }
+}
+
 fn load_icon_from_ico(ico_bytes: &[u8]) -> egui::IconData {
     use image::GenericImageView;
     
@@ -27,6 +35,17 @@ fn load_icon_from_ico(ico_bytes: &[u8]) -> egui::IconData {
 }
 
 fn main() {
+    // On Windows with windows_subsystem = "windows", we need to manually attach
+    // to console if running with CLI arguments
+    #[cfg(windows)]
+    {
+        let args: Vec<String> = std::env::args().collect();
+        // If there are CLI arguments (beyond just the program name), attach console
+        if args.len() > 1 {
+            attach_console();
+        }
+    }
+    
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     // First try parsing CLI args. If a CLI subcommand was given, handle it and exit.
