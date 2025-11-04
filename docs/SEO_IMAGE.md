@@ -1,88 +1,88 @@
-# SEO 图片规范
+# SEO Image Specifications
 
 ## 📸 **og-image.png** (Open Graph Image)
 
-**用途**: Facebook、LinkedIn、WhatsApp 等社交平台分享时的预览图
+**Purpose**: Preview image when sharing on social platforms such as Facebook, LinkedIn, WhatsApp, etc.
 
-**规范要求**:
+**Specification Requirements**:
 
-- **尺寸**: 1200×630 像素 (推荐)
-- **宽高比**: 1.91:1
-- **文件大小**: < 8MB (推荐 < 300KB)
-- **文件格式**: PNG, JPG, GIF
-- **最小尺寸**: 600×315 像素
-- **最大尺寸**: 1200×630 像素
+- **Dimensions**: 1200×630 pixels (recommended)
+- **Aspect ratio**: 1.91:1
+- **File size**: < 8MB (recommended < 300KB)
+- **File format**: PNG, JPG, GIF
+- **Minimum dimensions**: 600×315 pixels
+- **Maximum dimensions**: 1200×630 pixels
 
-**设计建议**:
+**Design Suggestions**:
 
-- 包含品牌 logo 和产品名称
-- 简洁的背景和主要功能说明
-- 文字要大且清晰（移动端也能看清）
+- Include brand logo and product name
+- Simple background with key feature description
+- Text should be large and clear (readable on mobile)
 
 ## 🐦 **twitter-card.png** (Twitter Card Image)
 
-**用途**: Twitter 分享时的预览图
+**Purpose**: Preview image when sharing on Twitter
 
-**规范要求**:
+**Specification Requirements**:
 
-- **尺寸**: 1200×675 像素 (推荐)
-- **宽高比**: 16:9 (summary_large_image)
-- **文件大小**: < 5MB
-- **文件格式**: PNG, JPG, WEBP, GIF
-- **最小尺寸**: 300×157 像素
+- **Dimensions**: 1200×675 pixels (recommended)
+- **Aspect ratio**: 16:9 (summary_large_image)
+- **File size**: < 5MB
+- **File format**: PNG, JPG, WEBP, GIF
+- **Minimum dimensions**: 300×157 pixels
 
-**设计建议**:
+**Design Suggestions**:
 
-- 可以与 og-image 相同，或针对 Twitter 优化
-- 考虑 Twitter 的深色/浅色主题适配
+- Can be the same as og-image or optimized for Twitter
+- Consider adaptation for Twitter's dark/light themes
 
 ## 🖼️ **screenshot.png** (App Screenshot)
 
-**用途**: 结构化数据中的应用截图，展示实际界面
+**Purpose**: Application screenshot in structured data, showing actual interface
 
-**规范要求**:
+**Specification Requirements**:
 
-- **尺寸**: 建议 1280×720 或 1920×1080 像素
-- **宽高比**: 16:9 或 16:10
-- **文件大小**: < 1MB (推荐)
-- **文件格式**: PNG (保持清晰度)
+- **Dimensions**: Recommended 1280×720 or 1920×1080 pixels
+- **Aspect ratio**: 16:9 or 16:10
+- **File size**: < 1MB (recommended)
+- **File format**: PNG (maintains clarity)
 
-**设计建议**:
+**Design Suggestions**:
 
-- 展示应用的主要界面
-- 突出核心功能
-- 高质量的实际使用截图
+- Show the main application interface
+- Highlight core features
+- High-quality actual usage screenshot
 
 ---
 
-## 🎨 **为 peek 项目的建议设计内容**
+## 🎨 **Recommended Design Content for the peek Project**
 
-基于您的 HTTP Inspector 工具，建议这些图片包含：
+Based on your HTTP Inspector tool, these images should include:
 
 ### **og-image.png & twitter-card.png**
 
 - peek logo
-- "Modern HTTP Inspector" 标题
-- 简洁的 API 请求示例或界面预览
-- 关键特性：Fast, Open Source, Cross-platform
-- 品牌色彩：#7c3aed (紫色主题)
+- "Modern HTTP Inspector" title
+- Simple API request example or interface preview
+- Key features: Fast, Open Source, Cross-platform
+- Brand color: #7c3aed (purple theme)
 
 ### **screenshot.png**
 
-- peek 应用的主界面截图
-- 显示一个 HTTP 请求的完整流程
-- 包含请求面板、响应面板、headers 等
-- 展示 JSON 格式化后的响应
+- Main interface screenshot of the peek application
+- Show a complete HTTP request flow
+- Include request panel, response panel, headers, etc.
+- Display formatted JSON response
 
-## 🛠️ **快速生成建议**
+## 🛠️ **Quick Generation Tips**
 
-如果您需要快速生成这些图片，可以：
+If you need to quickly generate these images:
 
-1. **使用设计工具**: Figma, Canva, Adobe Creative Suite
-2. **在线工具**:
+1. **Use design tools**: Figma, Canva, Adobe Creative Suite
+2. **Online tools**:
    - Social Media Image Generator
    - Bannercreator.com
    - Crello
-3. **程序化生成**: 使用 Puppeteer 或 Playwright 截图您的应用
+3. **Programmatic generation**: Use Puppeteer or Playwright to screenshot your application
 
-需要我帮您创建一个简单的 HTML 模板来生成这些图片吗？
+Would you like me to help create a simple HTML template to generate these images?
