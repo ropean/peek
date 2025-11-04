@@ -27,7 +27,7 @@ impl PeekApp {
             use_ssl: true,
             use_post: false,
             allow_redirects: false,
-            query_all: true,
+            query_all: false,
             response_text: String::new(),
             is_loading: false,
             response_receiver: None,
@@ -207,7 +207,12 @@ impl eframe::App for PeekApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Center window on first frame
         if self.first_frame {
-            ctx.send_viewport_cmd(egui::ViewportCommand::CenterOnScreen);
+            // egui 0.25 removed the `CenterOnScreen` enum variant in favor of
+            // the associated constructor `center_on_screen(ctx)` which returns
+            // an Option<ViewportCommand>.
+            if let Some(cmd) = egui::ViewportCommand::center_on_screen(ctx) {
+                ctx.send_viewport_cmd(cmd);
+            }
             self.first_frame = false;
         }
 
