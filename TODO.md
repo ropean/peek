@@ -1,0 +1,1 @@
+- CLI mode does not work well on Windows
