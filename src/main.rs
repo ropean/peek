@@ -47,21 +47,47 @@ fn main() {
     // Check if we have CLI arguments
     let args: Vec<String> = std::env::args().collect();
     let has_cli_args = args.len() > 1;
-    
+
     // On Windows with windows_subsystem = "windows", we need to manually attach
     // to console if running with CLI arguments
     #[cfg(windows)]
     if has_cli_args {
         attach_console();
     }
-    
+
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     // Try parsing CLI args. If a CLI command was given, handle it and exit.
     if has_cli_args {
         let code = cli::run_from_args();
         if code != 127 {
-            // Either succeeded or failed with an exit code.
+            // CLI mode: ensure clean exit for Windows console
+            #[cfg(windows)]
+            {
+                use std::io::Write;
+                // Flush all output streams
+                let _ = std::io::stdout().flush();
+                let _ = std::io::stderr().flush();
+
+                // Send newline to trigger parent console prompt
+                println!();
+                let _ = std::io::stdout().flush();
+
+                // Free the console before exiting
+                unsafe {
+                    use winapi::um::wincon::FreeConsole;
+                    FreeConsole();
+                }
+            }
+
+            #[cfg(not(windows))]
+            {
+                use std::io::Write;
+                let _ = std::io::stdout().flush();
+                let _ = std::io::stderr().flush();
+            }
+
+            // Exit with the appropriate code
             process::exit(code);
         }
     }
