@@ -68,61 +68,6 @@ pub struct CliArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Single or multiple URL requests (explicit subcommand - optional)
-    Cli {
-        /// One or more URLs to request
-        #[arg(value_name = "URL")]
-        urls: Vec<String>,
-
-        /// Force SSL (https)
-        #[arg(long = "ssl")]
-        ssl: bool,
-
-        /// Disable SSL (use http)
-        #[arg(long = "no-ssl")]
-        no_ssl: bool,
-
-        /// HTTP method (GET or POST)
-        #[arg(short = 'X', long = "method", default_value = "GET")]
-        method: String,
-
-        /// Request body (implies POST)
-        #[arg(short = 'd', long = "data")]
-        data: Option<String>,
-
-        /// Follow redirects
-        #[arg(short = 'r', long = "follow-redirects")]
-        follow_redirects: bool,
-
-        /// Also query www.<domain> if top-level
-        #[arg(short = 'a', long = "all")]
-        all: bool,
-
-        /// Timeout in seconds
-        #[arg(short = 't', long = "timeout")]
-        timeout: Option<u64>,
-
-        /// Output file (writes text or JSON)
-        #[arg(short = 'o', long = "output")]
-        output: Option<PathBuf>,
-
-        /// Fail and return non-zero exit code if any request fails
-        #[arg(long = "fail-on-error")]
-        fail_on_error: bool,
-
-        /// Format: text or json
-        #[arg(short = 'f', long = "format", default_value = "text")]
-        format: String,
-
-        /// Quiet
-        #[arg(short = 'q', long = "quiet")]
-        quiet: bool,
-
-        /// Verbose
-        #[arg(long = "verbose")]
-        verbose: bool,
-    },
-
     /// Batch mode: read URLs from a file or stdin
     Batch {
         /// File to read URLs from (one per line). If omitted, read from stdin.
@@ -379,37 +324,6 @@ pub fn run_from_args() -> i32 {
     }
 
     match args.command {
-        Some(Commands::Cli {
-            urls,
-            ssl,
-            no_ssl,
-            method,
-            data,
-            follow_redirects,
-            all,
-            timeout,
-            output,
-            format,
-            quiet,
-            verbose,
-            fail_on_error,
-        }) => {
-            handle_cli_request(
-                urls,
-                ssl,
-                no_ssl,
-                method,
-                data,
-                follow_redirects,
-                all,
-                timeout,
-                output,
-                format,
-                quiet,
-                verbose,
-                fail_on_error,
-            )
-        }
         Some(Commands::Batch {
             file,
             follow_redirects,
