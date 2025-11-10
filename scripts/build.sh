@@ -1,5 +1,34 @@
 #!/bin/bash
 echo "Building peek ..."
+
+# Detect platform
+PLATFORM=$(uname)
+
+# For macOS, offer to build .app bundle
+if [ "$PLATFORM" = "Darwin" ]; then
+	echo "macOS detected."
+	echo "Choose build type:"
+	echo "  1) Build .app bundle (GUI application)"
+	echo "  2) Build binary only (for CLI use)"
+	echo ""
+
+	# Check if running in interactive mode
+	if [ -t 0 ]; then
+		read -p "Enter choice [1/2] (default: 1): " CHOICE
+		CHOICE=${CHOICE:-1}
+	else
+		# Non-interactive mode, default to .app bundle
+		CHOICE=1
+	fi
+
+	if [ "$CHOICE" = "1" ]; then
+		# Build .app bundle
+		exec "$(dirname "$0")/build-macos-app.sh"
+	fi
+	# Otherwise continue with binary build
+fi
+
+# Standard binary build
 cargo build --release
 if [ $? -eq 0 ]; then
 	echo "Build successful!"

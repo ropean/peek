@@ -28,14 +28,62 @@ A HTTP inspector. It's Rust port of the [HttpStatus](https://github.com/ropean/H
    ```bash
    cd peek
    ```
+
 3. Build the project:
+
+   **Option A: Using build scripts (recommended)**
+
+   - **macOS** (creates .app bundle):
+     ```bash
+     ./scripts/build.sh
+     ```
+     This will prompt you to choose between:
+     1. Building a .app bundle (GUI application)
+     2. Building a binary only (for CLI use)
+
+     Or build directly:
+     ```bash
+     ./scripts/build-macos-app.sh  # Creates Peek.app
+     ```
+
+   - **Windows**:
+     ```cmd
+     scripts\build.cmd
+     ```
+
+   - **Linux**:
+     ```bash
+     ./scripts/build.sh
+     ```
+
+   **Option B: Using cargo directly**
    ```bash
    cargo build --release
    ```
+
 4. Run the application:
-   ```bash
-   cargo run --release
-   ```
+   - **macOS (.app bundle)**:
+     ```bash
+     open target/release/Peek.app
+     ```
+     Or install to Applications:
+     ```bash
+     cp -r target/release/Peek.app /Applications/
+     ```
+
+   - **macOS/Linux (binary)**:
+     ```bash
+     cargo run --release
+     # or
+     ./target/release/peek
+     ```
+
+   - **Windows**:
+     ```cmd
+     cargo run --release
+     REM or
+     target\release\peek.exe
+     ```
 
 ## Usage
 
@@ -110,6 +158,40 @@ A HTTP inspector. It's Rust port of the [HttpStatus](https://github.com/ropean/H
 
    If you'd like, I can add a few short end-to-end examples that run against a local test server (useful for CI).
 
+## Platform-Specific Notes
+
+### macOS
+
+The build script for macOS creates a proper .app bundle that can be installed to the Applications folder. The .app bundle includes:
+- The executable
+- Application metadata (Info.plist)
+- Application icon (.icns format)
+
+**Converting Icons to .icns:**
+
+If you need to create or update the macOS icon:
+
+```bash
+./scripts/convert-icon-to-icns.sh assets/pk.ico
+```
+
+This will create `assets/peek.icns` which is used by the .app bundle.
+
+**Note:** The CLI functionality is still available from within the .app bundle:
+```bash
+./target/release/Peek.app/Contents/MacOS/peek cli <url>
+```
+
+### Windows
+
+The Windows executable is built with a GUI subsystem, but automatically attaches to the console when CLI arguments are provided. This means:
+- Double-clicking the .exe launches the GUI
+- Running with arguments in terminal shows CLI output
+
+### Linux
+
+The Linux build creates a standard executable that supports both GUI and CLI modes.
+
 ## Architecture
 
 The application is structured into several modules:
@@ -118,6 +200,7 @@ The application is structured into several modules:
 - `ui.rs`: User interface implementation using egui
 - `http_client.rs`: HTTP request handling and response processing
 - `network_utils.rs`: Network utilities for IP resolution and local network info
+- `cli.rs`: Command-line interface implementation
 
 ## Dependencies
 
