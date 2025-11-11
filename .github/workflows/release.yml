@@ -40,17 +40,34 @@ jobs:
             upx: true
             strip: false
 
-          # macOS
+          # macOS - Build binaries only
           - os: macos-latest
             target: x86_64-apple-darwin
             name: peek-macos-x64
-            upx: false # Disable UPX for macOS x64 due to compatibility issues
+            upx: false
             strip: true
+            build_app: false
           - os: macos-latest
             target: aarch64-apple-darwin
             name: peek-macos-arm64
-            upx: false # UPX doesn't support ARM64 macOS well
-            strip: true # Use strip instead
+            upx: false
+            strip: true
+            build_app: false
+          # macOS - Build .app bundles
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            name: Peek-x64.app
+            upx: false
+            strip: true
+            build_app: true
+            arch: x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: Peek-arm64.app
+            upx: false
+            strip: true
+            build_app: true
+            arch: arm64
 
           # Linux
           - os: ubuntu-latest
@@ -135,77 +152,157 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y upx
 
-      - name: Build with build.sh
+      - name: Build application
         shell: bash
         run: |
           # Check if this is native build (host matches target)
           HOST_TARGET=$(rustc -vV | sed -n 's|host: ||p')
           BUILD_TARGET="${{ matrix.platform.target }}"
+          IS_APP_BUILD="${{ matrix.platform.build_app || false }}"
 
-          if [ "$BUILD_TARGET" = "$HOST_TARGET" ]; then
-            # Native build: use build.sh for consistency
-            echo "Native build detected, using build.sh"
-            chmod +x scripts/build.sh
-            ./scripts/build.sh
+          if [ "$IS_APP_BUILD" = "true" ]; then
+            echo "Building .app bundle for $BUILD_TARGET"
             
-            # Move binary to target-specific directory for consistent path handling
-            mkdir -p "target/$BUILD_TARGET/release"
-            if [ "${{ runner.os }}" = "Windows" ]; then
-              cp target/release/peek.exe "target/$BUILD_TARGET/release/peek.exe"
-            else
-              cp target/release/peek "target/$BUILD_TARGET/release/peek"
-            fi
-          else
-            # Cross-compilation: build directly with cargo
-            echo "Cross-compilation build: $HOST_TARGET -> $BUILD_TARGET"
+            # Build the release binary
             cargo build --release --target $BUILD_TARGET
             
-            # Determine executable path
-            if [ "${{ runner.os }}" = "Windows" ]; then
-              EXEC_PATH="target/$BUILD_TARGET/release/peek.exe"
-            else
-              EXEC_PATH="target/$BUILD_TARGET/release/peek"
-            fi
+            # Create .app bundle
+            echo "Creating .app bundle..."
             
-            # Apply UPX compression if enabled
-            if [ "${{ matrix.platform.upx }}" = "true" ] && command -v upx &>/dev/null; then
-              echo "Compressing with UPX..."
-              upx --best --lzma "$EXEC_PATH" || echo "UPX compression failed, continuing..."
-            fi
+            # Define app bundle structure
+            APP_NAME="Peek-${{ matrix.platform.arch }}.app"
+            APP_DIR="$APP_NAME"
+            CONTENTS_DIR="${APP_DIR}/Contents"
+            MACOS_DIR="${CONTENTS_DIR}/MacOS"
+            RESOURCES_DIR="${CONTENTS_DIR}/Resources"
             
-            # Apply strip if enabled
-            if [ "${{ matrix.platform.strip }}" = "true" ]; then
-              echo "Original size:"
-              ls -lh "$EXEC_PATH"
-              strip "$EXEC_PATH"
-              echo "After stripping:"
-              ls -lh "$EXEC_PATH"
-            fi
-          fi
+            # Create directory structure
+            mkdir -p "${MACOS_DIR}"
+            mkdir -p "${RESOURCES_DIR}"
+            
+            # Copy binary
+            cp "target/$BUILD_TARGET/release/peek" "${MACOS_DIR}/peek"
+            chmod +x "${MACOS_DIR}/peek"
+            
+            # Create minimal Info.plist
+            cat > "${CONTENTS_DIR}/Info.plist" <<EOL
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>peek</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.peek-rs.peek</string>
+    <key>CFBundleName</key>
+    <string>Peek</string>
+    <key>CFBundleDisplayName</key>
+    <string>Peek</string>
+    <key>CFBundleVersion</key>
+    <string>${{ env.RELEASE_TAG }}</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${RELEASE_TAG#v}</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.15</string>
+    <key>LSArchitecturePriority</key>
+    <array>
+        <string>${{ matrix.platform.arch }}</string>
+    </array>
+</dict>
+</plist>
+EOL
 
-          # Show final binary info
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            ls -lh "target/$BUILD_TARGET/release/peek.exe"
+            # Copy icon if available
+            if [ -f "assets/peek.icns" ]; then
+              cp "assets/peek.icns" "${RESOURCES_DIR}/peek.icns"
+              # Update Info.plist to include icon
+              plutil -insert CFBundleIconFile -string "peek.icns" "${CONTENTS_DIR}/Info.plist"
+            fi
+            
+            # Create a zip of the app bundle
+            zip -r "${APP_NAME}.zip" "$APP_NAME"
+            
           else
-            ls -lh "target/$BUILD_TARGET/release/peek"
+            # Standard binary build
+            if [ "$BUILD_TARGET" = "$HOST_TARGET" ]; then
+              # Native build: use build.sh for consistency
+              echo "Native build detected, using build.sh"
+              chmod +x scripts/build.sh
+              ./scripts/build.sh
+              
+              # Move binary to target-specific directory for consistent path handling
+              mkdir -p "target/$BUILD_TARGET/release"
+              if [ "${{ runner.os }}" = "Windows" ]; then
+                cp target/release/peek.exe "target/$BUILD_TARGET/release/peek.exe"
+              else
+                cp target/release/peek "target/$BUILD_TARGET/release/peek"
+              fi
+            else
+              # Cross-compilation: build directly with cargo
+              echo "Cross-compilation build: $HOST_TARGET -> $BUILD_TARGET"
+              cargo build --release --target $BUILD_TARGET
+              
+              # Determine executable path
+              if [ "${{ runner.os }}" = "Windows" ]; then
+                EXEC_PATH="target/$BUILD_TARGET/release/peek.exe"
+              else
+                EXEC_PATH="target/$BUILD_TARGET/release/peek"
+              fi
+              
+              # Apply UPX compression if enabled
+              if [ "${{ matrix.platform.upx }}" = "true" ] && command -v upx &>/dev/null; then
+                echo "Compressing with UPX..."
+                upx --best --lzma "$EXEC_PATH" || echo "UPX compression failed, continuing..."
+              fi
+              
+              # Apply strip if enabled
+              if [ "${{ matrix.platform.strip }}" = "true" ]; then
+                echo "Original size:"
+                ls -lh "$EXEC_PATH"
+                strip "$EXEC_PATH"
+                echo "After stripping:"
+                ls -lh "$EXEC_PATH"
+              fi
+            fi
+
+            # Show final binary info
+            if [ "${{ runner.os }}" = "Windows" ]; then
+              ls -lh "target/$BUILD_TARGET/release/peek.exe"
+            else
+              ls -lh "target/$BUILD_TARGET/release/peek"
+            fi
           fi
 
-      - name: Rename binary (Windows)
+      - name: Prepare artifact
         if: runner.os == 'Windows'
         run: |
-          Copy-Item target/${{ matrix.platform.target }}/release/peek.exe ${{ matrix.platform.name }}
+          if [ "${{ matrix.platform.build_app }}" = "true" ]; then
+            # For app bundles, we already have the zip file
+            echo "App bundle already prepared"
+          else
+            Copy-Item target/${{ matrix.platform.target }}/release/peek.exe ${{ matrix.platform.name }}
+          fi
 
-      - name: Rename binary (Unix)
+      - name: Prepare artifact (Unix)
         if: runner.os != 'Windows'
         run: |
-          cp target/${{ matrix.platform.target }}/release/peek ${{ matrix.platform.name }}
-          chmod +x ${{ matrix.platform.name }}
+          if [ "${{ matrix.platform.build_app }}" = "true" ]; then
+            # For app bundles, we already have the zip file
+            echo "App bundle already prepared"
+          else
+            cp target/${{ matrix.platform.target }}/release/peek "${{ matrix.platform.name }}"
+            chmod +x "${{ matrix.platform.name }}"
+          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.platform.name }}
-          path: ${{ matrix.platform.name }}
+          path: |
+            ${{ matrix.platform.name }}
+            ${{ matrix.platform.name }}.zip
           retention-days: 7
 
   # Create release with changelog
