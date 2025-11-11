@@ -1,4 +1,7 @@
-// Use Windows subsystem to avoid console window when double-clicking
+// Windows GUI Configuration:
+// This attribute ensures the executable is a pure GUI application without console window.
+// When run with CLI arguments, the console is dynamically attached (see attach_console() below).
+// This provides a clean GUI experience while preserving CLI functionality.
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 use eframe::egui;

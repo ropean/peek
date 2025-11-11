@@ -19,10 +19,6 @@ fn main() {
         res.compile().expect("Failed to compile Windows resources");
     }
     
-    // Set linker subsystem to windows (GUI mode - no console)
-    #[cfg(windows)]
-    {
-        println!("cargo:rustc-link-arg=/SUBSYSTEM:WINDOWS");
-        println!("cargo:rustc-link-arg=/ENTRY:mainCRTStartup");
-    }
+    // Note: We use #![windows_subsystem = "windows"] in main.rs instead of linker flags
+    // This ensures a clean GUI executable without console window on startup
 }
